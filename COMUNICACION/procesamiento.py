@@ -1,9 +1,8 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from config_comunicacion import (
     AREA, TOTAL_PREGUNTAS_ESPERADAS, COLUMNAS_OBLIGATORIAS,
-    COLUMNAS_IDENTIFICACION, COLUMNAS_PREGUNTAS, COLUMNAS_VALIDACION,
     clasificar_nivel_logro,
 )
 
@@ -12,14 +11,31 @@ def _normalizar_texto(serie):
     return serie.fillna("").astype(str).str.strip()
 
 
+def _normalizar_porcentaje(valor):
+    """Convierte 0.75, 75 o '75%' a 0.75."""
+    if pd.isna(valor):
+        return np.nan
+    if isinstance(valor, str):
+        valor = valor.strip().replace("%", "").replace(",", ".")
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return np.nan
+    return numero / 100 if numero > 1 else numero
+
+
 def cargar_y_procesar(archivo, pestana="RESULTADOS"):
-    """Lee el Excel fuente, valida su estructura y añade NIVEL_LOGRO."""
+    """
+    Lee la base exportada desde Google Sheets.
+    Conserva todas las columnas originales y agrega campos calculados.
+    No elimina registros ni modifica el archivo de origen.
+    """
     try:
         df = pd.read_excel(archivo, sheet_name=pestana, engine="openpyxl")
     except ValueError as exc:
         raise ValueError(
             f"No se encontró la pestaña '{pestana}' en el archivo. "
-            "Verifica el nombre de la hoja."
+            "Verifica PESTANA_ORIGEN en config_comunicacion.py."
         ) from exc
 
     df.columns = [str(c).strip().upper() for c in df.columns]
@@ -30,65 +46,58 @@ def cargar_y_procesar(archivo, pestana="RESULTADOS"):
             "Faltan columnas obligatorias en el Excel: " + ", ".join(faltantes)
         )
 
-    # Limpieza de campos categóricos sin alterar el archivo original.
-    for col in ["NIVEL", "INSTITUCION", "SECCION", "APELLIDOS", "NOMBRES",
-                "COMP_1_NOMBRE"]:
+    # Normaliza campos de texto sin descartar las demás columnas.
+    for col in [
+        "NIVEL", "INSTITUCION", "GRADO", "SECCION",
+        "APELLIDOS", "NOMBRES", "COMP_1_NOMBRE"
+    ]:
         if col in df.columns:
             df[col] = _normalizar_texto(df[col])
 
     df["NIVEL"] = df["NIVEL"].str.upper()
     df["INSTITUCION"] = df["INSTITUCION"].str.replace(r"\s+", " ", regex=True)
+    df["GRADO"] = df["GRADO"].str.replace(r"\.0$", "", regex=True)
 
-    # Convierte a numérico y verifica el rango del puntaje.
-    for col in ["CORRECTAS", "INCORRECTAS", "TOTAL_PREGUNTAS",
-                "COMP_1_ACIERTOS", "COMP_1_TOTAL"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in [
+        "CORRECTAS", "INCORRECTAS", "TOTAL_PREGUNTAS",
+        "COMP_1_ACIERTOS", "COMP_1_TOTAL"
+    ]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    # Puntaje de logro específico de Comunicación.
     df["NIVEL_LOGRO"] = df["CORRECTAS"].apply(clasificar_nivel_logro)
 
-    # El porcentaje fuente puede venir como 0.75 o como 75%.
-    def normalizar_porcentaje(valor):
-        if pd.isna(valor):
-            return np.nan
-        if isinstance(valor, str):
-            valor = valor.strip().replace("%", "").replace(",", ".")
-        try:
-            numero = float(valor)
-        except (TypeError, ValueError):
-            return np.nan
-        return numero / 100 if numero > 1 else numero
+    # Conserva el porcentaje recibido y genera uno consistente con los aciertos.
+    if "PORCENTAJE" in df.columns:
+        df["PORCENTAJE_FUENTE_NORMALIZADO"] = df["PORCENTAJE"].apply(
+            _normalizar_porcentaje
+        )
+    else:
+        df["PORCENTAJE_FUENTE_NORMALIZADO"] = np.nan
 
     df["PORCENTAJE_CALCULADO"] = (
         df["CORRECTAS"] / df["TOTAL_PREGUNTAS"].replace(0, np.nan)
     )
-    df["PORCENTAJE_FUENTE_NORMALIZADO"] = df["PORCENTAJE"].apply(
-        normalizar_porcentaje
-    )
-
-    # Se usa el porcentaje calculado desde CORRECTAS/TOTAL_PREGUNTAS
-    # para que el reporte sea consistente con la clasificación.
     df["PORCENTAJE_REPORTE"] = df["PORCENTAJE_CALCULADO"]
 
-    # Campos derivados útiles para tablas y filtros.
-    df["GRADO"] = df["GRADO"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
     df["ESTUDIANTE"] = (
-        df["APELLIDOS"].fillna("").astype(str).str.strip()
+        df.get("APELLIDOS", "").fillna("").astype(str).str.strip()
         + ", "
-        + df["NOMBRES"].fillna("").astype(str).str.strip()
+        + df.get("NOMBRES", "").fillna("").astype(str).str.strip()
     ).str.strip(", ")
 
-    # Controles de calidad. No se eliminan registros automáticamente.
+    # Observaciones de calidad: se informa, pero no se borra ni altera la fila.
     df["OBSERVACION_DATOS"] = ""
-    df.loc[df["NIVEL_LOGRO"] == "REVISAR", "OBSERVACION_DATOS"] = (
+    df.loc[df["NIVEL_LOGRO"].eq("REVISAR"), "OBSERVACION_DATOS"] = (
         "Puntaje ausente o fuera del rango 0-16"
     )
-    df.loc[df["INSTITUCION"].eq(""), "OBSERVACION_DATOS"] += (
-        " | Institución vacía"
-    )
-    df.loc[df["TOTAL_PREGUNTAS"].ne(TOTAL_PREGUNTAS_ESPERADAS),
-           "OBSERVACION_DATOS"] += " | Total de preguntas distinto de 16"
+    df.loc[df["INSTITUCION"].eq(""), "OBSERVACION_DATOS"] += " | Institución vacía"
+    df.loc[
+        df["TOTAL_PREGUNTAS"].ne(TOTAL_PREGUNTAS_ESPERADAS),
+        "OBSERVACION_DATOS"
+    ] += " | Total de preguntas distinto de 16"
 
-    # Verifica posibles IDs repetidos, sin borrar filas.
     if "ID_REGISTRO" in df.columns:
         duplicados = df["ID_REGISTRO"].duplicated(keep=False) & df["ID_REGISTRO"].notna()
         df.loc[duplicados, "OBSERVACION_DATOS"] += " | ID_REGISTRO duplicado"
@@ -101,50 +110,75 @@ def resumen_niveles(df, filtro_nivel="TODOS"):
     orden = ["INICIO", "PROCESO", "LOGRADO", "REVISAR"]
     conteo = datos["NIVEL_LOGRO"].value_counts()
     total = len(datos)
-    filas = []
-    for nivel in orden:
-        cantidad = int(conteo.get(nivel, 0))
-        filas.append({
+    return pd.DataFrame([
+        {
             "NIVEL_LOGRO": nivel,
-            "ESTUDIANTES": cantidad,
-            "PORCENTAJE": cantidad / total if total else 0,
-        })
-    return pd.DataFrame(filas)
+            "ESTUDIANTES": int(conteo.get(nivel, 0)),
+            "PORCENTAJE": int(conteo.get(nivel, 0)) / total if total else 0,
+        }
+        for nivel in orden
+    ])
 
 
 def resumen_por_grado(df, filtro_nivel="TODOS"):
     datos = df if filtro_nivel == "TODOS" else df[df["NIVEL"] == filtro_nivel]
+    columnas = [
+        "NIVEL", "GRADO", "ESTUDIANTES",
+        "INICIO", "PROCESO", "LOGRADO", "REVISAR",
+        "PROMEDIO_ACIERTOS", "PROMEDIO_PORCENTAJE"
+    ]
     if datos.empty:
-        return pd.DataFrame(columns=["NIVEL", "GRADO", "ESTUDIANTES",
-                                     "INICIO", "PROCESO", "LOGRADO"])
+        return pd.DataFrame(columns=columnas)
+
     tabla = pd.crosstab(
-        [datos["NIVEL"], datos["GRADO"]],
-        datos["NIVEL_LOGRO"]
+        [datos["NIVEL"], datos["GRADO"]], datos["NIVEL_LOGRO"]
     ).reset_index()
-    for nivel in ["INICIO", "PROCESO", "LOGRADO"]:
+
+    for nivel in ["INICIO", "PROCESO", "LOGRADO", "REVISAR"]:
         if nivel not in tabla.columns:
             tabla[nivel] = 0
-    tabla["ESTUDIANTES"] = tabla[["INICIO", "PROCESO", "LOGRADO"]].sum(axis=1)
-    return tabla[["NIVEL", "GRADO", "ESTUDIANTES",
-                  "INICIO", "PROCESO", "LOGRADO"]]
+
+    promedios = (
+        datos.groupby(["NIVEL", "GRADO"], dropna=False)
+        .agg(
+            ESTUDIANTES=("ID_REGISTRO", "size"),
+            PROMEDIO_ACIERTOS=("CORRECTAS", "mean"),
+            PROMEDIO_PORCENTAJE=("PORCENTAJE_REPORTE", "mean"),
+        )
+        .reset_index()
+    )
+    tabla = tabla.merge(promedios, on=["NIVEL", "GRADO"], how="left")
+    return tabla[columnas].sort_values(["NIVEL", "GRADO"]).reset_index(drop=True)
 
 
 def resumen_competencia(df):
-    nombre = (
-        df["COMP_1_NOMBRE"].dropna().astype(str).str.strip()
+    """Comunicación se resume usando los campos COMP_1_* existentes."""
+    if df.empty:
+        return pd.DataFrame(columns=[
+            "NIVEL", "COMPETENCIA", "ESTUDIANTES",
+            "ACIERTOS_ACUMULADOS", "PREGUNTAS_POSIBLES_ACUMULADAS",
+            "PORCENTAJE_GLOBAL"
+        ])
+
+    datos = df.copy()
+    if "COMP_1_NOMBRE" not in datos.columns:
+        datos["COMP_1_NOMBRE"] = AREA
+
+    datos["COMP_1_NOMBRE"] = datos["COMP_1_NOMBRE"].fillna("").astype(str).str.strip()
+    datos.loc[datos["COMP_1_NOMBRE"].eq(""), "COMP_1_NOMBRE"] = AREA
+
+    return (
+        datos.groupby(["NIVEL", "COMP_1_NOMBRE"], dropna=False)
+        .agg(
+            ESTUDIANTES=("ID_REGISTRO", "size"),
+            ACIERTOS_ACUMULADOS=("COMP_1_ACIERTOS", "sum"),
+            PREGUNTAS_POSIBLES_ACUMULADAS=("COMP_1_TOTAL", "sum"),
+        )
+        .reset_index()
+        .rename(columns={"COMP_1_NOMBRE": "COMPETENCIA"})
+        .assign(
+            PORCENTAJE_GLOBAL=lambda x:
+                x["ACIERTOS_ACUMULADOS"] /
+                x["PREGUNTAS_POSIBLES_ACUMULADAS"].replace(0, np.nan)
+        )
     )
-    nombre = nombre[nombre.ne("")]
-    competencia = nombre.mode().iloc[0] if not nombre.empty else (
-        "Lee diversos tipos de textos escritos en su lengua materna"
-    )
-    aciertos = pd.to_numeric(df["COMP_1_ACIERTOS"], errors="coerce")
-    total = pd.to_numeric(df["COMP_1_TOTAL"], errors="coerce")
-    return pd.DataFrame([{
-        "COMPETENCIA": competencia,
-        "ESTUDIANTES": len(df),
-        "ACIERTOS_ACUMULADOS": int(aciertos.fillna(0).sum()),
-        "PREGUNTAS_POSIBLES_ACUMULADAS": int(total.fillna(0).sum()),
-        "PORCENTAJE_GLOBAL": (
-            aciertos.sum() / total.sum() if total.sum() else 0
-        ),
-    }])

@@ -2,27 +2,25 @@ from pathlib import Path
 
 # ============================================================
 # TUKUYRICUY 2026 - COMUNICACIÓN
-# Configuración general del procesamiento
+# Configuración general
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent
 CARPETA_DATOS = BASE_DIR / "resources"
 CARPETA_RESULTADOS = BASE_DIR / "resultados"
 
-# Guarda aquí el Excel descargado de Google Sheets.
 ARCHIVO_ENTRADA = CARPETA_DATOS / "RESULTADOS_COMUNICACION.xlsx"
 PESTANA_ORIGEN = "RESULTADOS"
 
 AREA = "COMUNICACIÓN"
 TOTAL_PREGUNTAS_ESPERADAS = 16
 
-# Límites acumulativos acordados:
-# Inicio: hasta 6; Proceso: hasta 11; Logrado: hasta 16.
+# Comunicación: Inicio 0-6; Proceso 7-11; Logrado 12-16.
 def clasificar_nivel_logro(correctas):
     if correctas is None:
         return "REVISAR"
     try:
-        puntaje = int(float(correctas))
+        puntaje = float(correctas)
     except (TypeError, ValueError):
         return "REVISAR"
 
