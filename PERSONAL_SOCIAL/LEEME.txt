@@ -1,0 +1,42 @@
+TUKUYRICUY 2026 - PERSONAL SOCIAL (PRIMARIA)
+
+Archivos:
+- config_personal_social.py
+- procesamiento_personal_social.py
+- reportes_personal_social.py
+- main_personal_social.py
+
+Instalación:
+1. Coloca esta carpeta dentro del proyecto o copia los cuatro .py a:
+   D:\Python\tukuyrikuy_salida_2026\PERSONAL_SOCIAL
+2. Crea la carpeta resources.
+3. Coloca en resources el archivo:
+   RESULTADOS_PERSONAL_SOCIAL_CCSS.xlsx
+4. La hoja de origen preferida es RESULTADOS. Si no existe, se usa la primera hoja.
+5. Ejecuta main_personal_social.py con el mismo entorno virtual que ya usas.
+
+Dependencias:
+pip install pandas openpyxl
+
+Estructura de entrada requerida:
+NIVEL, GRADO, V1...V16. También se conservan los campos de identificación
+y P1...P16 cuando están presentes. El módulo filtra NIVEL=PRIMARIA y grados 2 a 6.
+
+Cálculo:
+- COMP_1: P1-P3; niveles 0-1 INICIO, 2 PROCESO, 3 LOGRADO.
+- COMP_2: P4-P6; niveles 0-1 INICIO, 2 PROCESO, 3 LOGRADO.
+- COMP_3: P7-P10; niveles 0-2 INICIO, 3 PROCESO, 4 LOGRADO.
+- COMP_4: P11-P13; niveles 0-1 INICIO, 2 PROCESO, 3 LOGRADO.
+- COMP_5: P14-P16; niveles 0-1 INICIO, 2 PROCESO, 3 LOGRADO.
+- Peso igual: 20% por competencia.
+
+El puntaje global se calcula normalizando cada competencia por su número de preguntas
+y aplicando 20% a cada una. Los umbrales globales 50 y 75 son provisionales y se
+pueden cambiar en config_personal_social.py:
+LIMITE_GLOBAL_INICIO y LIMITE_GLOBAL_PROCESO.
+
+Salidas en resultados:
+- BASE_PROCESADA_PERSONAL_SOCIAL_PRIMARIA.xlsx
+- REPORTE_GENERAL_PERSONAL_SOCIAL_PRIMARIA.xlsx
+- REPORTES_INSTITUCIONES_PERSONAL_SOCIAL_PRIMARIA.zip
+- Carpeta REPORTES_INSTITUCIONES con un Excel por institución.
