@@ -3,24 +3,16 @@
 # GENERADOR DE REPORTES DE MATEMÁTICA
 # ============================================================
 
-from config_matematica import (
-    crear_carpetas,
-    validar_configuracion
-)
-
+from config_matematica import (crear_carpetas, validar_configuracion)
 from procesamiento_matematica import procesar_datos
-
 from reportes_matematica import generar_todos_los_reportes
 
-
 def main():
-
     print("=" * 60)
     print("TUKUYRICUY 2026 - GENERADOR DE REPORTES DE MATEMÁTICA")
     print("=" * 60)
 
     try:
-
         # 1. Crear carpetas
         crear_carpetas()
 
@@ -54,11 +46,7 @@ def main():
         print("\n" + "=" * 60)
         print("ERROR DURANTE LA GENERACIÓN DE REPORTES")
         print("=" * 60)
-
         print(f"\nDetalle: {e}")
-
         raise
 
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":    main()

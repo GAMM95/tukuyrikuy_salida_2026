@@ -25,28 +25,23 @@ from config_matematica import (
     NIVELES,
     COLORES,
     COLUMNAS_IDENTIFICACION,
+    COLUMNAS_DETALLE_INSTITUCION,
 )
 
 
-# ------------------------------------------------
 # 1. ESTILOS
-# ------------------------------------------------
-
 def relleno(color):
     return PatternFill(fill_type="solid", fgColor=color)
 
 
-FILL_CABECERA = relleno(COLORES["CABECERA"])    # #404040
+FILL_CABECERA = relleno(COLORES["CABECERA"])  # #404040
 FILL_GRIS = relleno(COLORES["GRIS_CLARO"])
 FILLS_NIVELES = {n: relleno(COLORES[n]) for n in NIVELES}
 
 BORDE = Border(bottom=Side(style="thin", color=COLORES["GRIS_MEDIO"]))
 
 
-# ------------------------------------------------
 # 2. FUNCIONES GENERALES
-# ------------------------------------------------
-
 def limpiar_nombre_archivo(nombre):
     nombre = re.sub(r'[\\/*?:"<>|]', "_", str(nombre).strip())
     nombre = re.sub(r"\s+", "_", nombre)
@@ -84,10 +79,16 @@ def escribir_titulo(ws, titulo, subtitulo=None, hasta="H"):
 
 def es_columna_nivel(nombre):
     return (
-        nombre == "NIVEL_LOGRO_GLOBAL"
-        or (nombre.startswith("COMP_") and nombre.endswith("_NIVEL"))
+            nombre == "NIVEL_LOGRO_GLOBAL"
+            or (nombre.startswith("COMP_") and nombre.endswith("_NIVEL"))
     )
 
+def es_columna_porcentaje(nombre):
+    """Columnas que guardan una fracción (0-1) y se muestran como 43.75 %."""
+    return (
+        nombre in ("PORCENTAJE_FUENTE_NORMALIZADO", "PORCENTAJE_CALCULADO")
+        or (nombre.startswith("COMP_") and nombre.endswith("_PORCENTAJE"))
+    )
 
 def escribir_tabla(ws, df):
     """Escribe un DataFrame desde A1 con cabecera #404040."""
@@ -106,6 +107,8 @@ def escribir_tabla(ws, df):
 
         if columna.startswith("%"):
             formato = "0.0%"
+        elif es_columna_porcentaje(columna):
+            formato = "0.00%"
         elif columna.startswith("PUNTAJE"):
             formato = "0.0"
         else:
@@ -143,10 +146,7 @@ def escribir_tabla(ws, df):
         ws.auto_filter.ref = ws.dimensions
 
 
-# ------------------------------------------------
 # 3. TABLAS DE RESUMEN
-# ------------------------------------------------
-
 def resumen_competencias(df):
     """Una fila por competencia más una fila GLOBAL."""
     total = len(df)
@@ -200,7 +200,7 @@ def tabla_resumen(df, claves, etiqueta=None):
 
     for c in COMPETENCIAS:
         tabla[f"% PROM. {c['corto']}"] = (
-            g[f"{c['codigo']}_PORCENTAJE"].mean() / 100
+                g[f"{c['codigo']}_PORCENTAJE"].mean() / 100
         )
 
     tabla = tabla.reset_index()
@@ -215,7 +215,19 @@ def tabla_resumen(df, claves, etiqueta=None):
     return tabla
 
 
-def preparar_detalle(df):
+def preparar_detalle(df, completo=False):
+    if completo:
+        columnas = [c for c in COLUMNAS_DETALLE_INSTITUCION if c in df.columns]
+        detalle = df[columnas].copy()
+
+        # COMP_x_PORCENTAJE viene de 0 a 100; se pasa a fracción para mostrarlo en %.
+        for c in COMPETENCIAS:
+            col = f"{c['codigo']}_PORCENTAJE"
+            if col in detalle.columns:
+                detalle[col] = detalle[col] / 100
+
+        return detalle
+
     columnas = [c for c in COLUMNAS_IDENTIFICACION if c in df.columns]
     columnas += ["CORRECTAS", "INCORRECTAS"]
 
@@ -227,10 +239,7 @@ def preparar_detalle(df):
     return df[[c for c in columnas if c in df.columns]]
 
 
-# ------------------------------------------------
 # 4. DASHBOARD
-# ------------------------------------------------
-
 def agregar_grafico(ws_dash, ws_datos, tabla, col_categorias, titulo, ancla):
     """Barras apiladas al 100 %: rojo, amarillo y verde pastel."""
     columnas = list(tabla.columns)
@@ -323,7 +332,7 @@ def construir_dashboard(ws, df, titulo, ws_comp, comp, ws_grupos, grupos):
 # 5. CREAR UN LIBRO COMPLETO
 # ------------------------------------------------
 
-def crear_libro(df, titulo, ruta, hojas_extra):
+def crear_libro(df, titulo, ruta, hojas_extra, detalle_completo=False):
     """hojas_extra: lista de (nombre_hoja, columnas_de_agrupacion)."""
     wb = Workbook()
 
@@ -343,17 +352,14 @@ def crear_libro(df, titulo, ruta, hojas_extra):
         escribir_tabla(ws, tabla_resumen(df, claves))
 
     ws_detalle = wb.create_sheet("DETALLE_ESTUDIANTES")
-    escribir_tabla(ws_detalle, preparar_detalle(df))
+    escribir_tabla(ws_detalle, preparar_detalle(df, completo=detalle_completo))
 
     construir_dashboard(ws_dash, df, titulo, ws_comp, comp, ws_grupos, grupos)
 
     wb.save(ruta)
 
 
-# ------------------------------------------------
 # 6. REPORTE GENERAL
-# ------------------------------------------------
-
 def generar_reporte_general(df):
     ruta = CARPETA_RESULTADOS / NOMBRE_ARCHIVO_GENERAL
 
@@ -369,10 +375,7 @@ def generar_reporte_general(df):
     return ruta
 
 
-# ------------------------------------------------
 # 7. REPORTES POR INSTITUCIÓN
-# ------------------------------------------------
-
 def generar_reportes_instituciones(df):
     CARPETA_REPORTES_IE.mkdir(parents=True, exist_ok=True)
 
@@ -389,6 +392,7 @@ def generar_reportes_instituciones(df):
             f"{institucion} - {AREA}",
             ruta,
             hojas_extra=[("RESUMEN_SECCIONES", ["NIVEL", "GRADO", "SECCION"])],
+            detalle_completo=True,
         )
 
         print(f"[{numero}/{len(instituciones)}] {nombre}")
@@ -408,10 +412,7 @@ def comprimir_reportes():
     return ruta_zip
 
 
-# ------------------------------------------------
 # 8. FUNCIÓN PRINCIPAL
-# ------------------------------------------------
-
 def generar_todos_los_reportes(df):
     orden = [c for c in ["INSTITUCION", "NIVEL", "GRADO", "SECCION", "APELLIDOS"]
              if c in df.columns]

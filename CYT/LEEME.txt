@@ -1,32 +1,165 @@
-TUKUYRICUY 2026 - CIENCIA Y TECNOLOGÍA
+# ============================================================
+# TUKUYRICUY 2026
+# MÓDULO DE CIENCIA Y TECNOLOGÍA (CYT)
+# GENERADOR DE REPORTES Y RESULTADOS
+# ============================================================
 
-ARCHIVOS
-- config_cyt.py: configuración de rutas, competencias, pesos y niveles.
-- procesamiento_cyt.py: lee RESULTADOS_CIENCIA_TECNOLOGIA.xlsx y calcula resultados.
-- reportes_cyt.py: genera el reporte consolidado y reportes por institución.
-- main_cyt.py: ejecuta todo el proceso.
+## 1. DESCRIPCIÓN
 
-INSTALACIÓN
-1. Copia la carpeta CYT dentro de D:\Python\tukuyrikuy_salida_2026\
-2. Coloca RESULTADOS_CIENCIA_TECNOLOGIA.xlsx en CYT\resources\
-3. Instala dependencias en tu entorno virtual:
-   pip install pandas openpyxl numpy
-4. Ejecuta:
-   python CYT\main_cyt.py
+Este módulo permite procesar y sistematizar los resultados de la Evaluación de Salida 2026 - TUKUYRICUY, correspondiente al área de Ciencia y Tecnología de los niveles de primaria y secundaria.
 
-COMPETENCIAS Y PREGUNTAS
-- Indaga: P1-P6. Inicio 0-2; Proceso 3-4; Logrado 5-6.
-- Explica: P7-P12. Inicio 0-2; Proceso 3-4; Logrado 5-6.
-- Diseña: P13-P16. Inicio 0-2; Proceso 3; Logrado 4.
+El sistema procesa las respuestas de los estudiantes, compara sus resultados con las claves de respuestas establecidas y calcula los niveles de logro por competencia y el resultado global.
 
-PESOS Y RESULTADO GLOBAL
-Las tres competencias tienen el mismo peso (1/3 cada una).
-El nivel global usa provisionalmente: Inicio <=50%; Proceso <=75%; Logrado >75%.
-Si tus módulos anteriores usan otros umbrales globales, modifica UMBRAL_GLOBAL_INICIO
-y UMBRAL_GLOBAL_PROCESO en config_cyt.py.
+Asimismo, genera reportes consolidados y reportes individuales por institución educativa.
 
-SALIDAS
-CYT\resultados\BASE_PROCESADA_CYT.xlsx
-CYT\resultados\REPORTES_CYT\REPORTE_GENERAL_CYT.xlsx
-CYT\resultados\REPORTES_CYT\REPORTES_CYT_POR_INSTITUCION.zip
-Además, se genera una carpeta con un Excel por institución.
+## 2. ESTRUCTURA DE ARCHIVOS
+
+El módulo está organizado de la siguiente manera:
+
+- `config_cyt.py`: configuración de rutas, grados, competencias, ponderaciones y niveles de logro.
+- `procesamiento_cyt.py`: lectura del archivo Excel, validación de respuestas, procesamiento de datos y cálculo de resultados.
+- `reportes_cyt.py`: generación del reporte general consolidado y reportes individuales por institución educativa.
+- `main_cyt.py`: archivo principal que ejecuta todo el proceso.
+
+## 3. REQUISITOS E INSTALACIÓN
+
+**Ubicación del módulo**
+
+Copiar la carpeta `CYT` dentro del directorio:
+
+`D:\Python\tukuyrikuy_salida_2026\`
+
+**Archivo de entrada**
+
+Colocar el archivo:
+
+`RESULTADOS_CIENCIA_TECNOLOGIA.xlsx`
+
+Dentro de la carpeta:
+
+`CYT\resources\`
+
+**Instalación de dependencias**
+
+Activar el entorno virtual e instalar las librerías necesarias:
+
+```bash
+pip install pandas openpyxl numpy
+```
+
+**Ejecución del sistema**
+
+Desde el directorio principal del proyecto, ejecutar:
+
+```bash
+python CYT\main_cyt.py
+```
+
+## 4. GRADOS Y NIVELES EVALUADOS
+
+**EDUCACIÓN PRIMARIA**
+- 2.º grado
+- 3.º grado
+- 4.º grado
+- 5.º grado
+- 6.º grado
+
+**EDUCACIÓN SECUNDARIA**
+- 1.º grado
+- 2.º grado
+- 3.º grado
+- 4.º grado
+- 5.º grado
+
+Cada evaluación contempla 16 preguntas, con excepción de las adecuaciones que puedan establecerse en la configuración correspondiente.
+
+## 5. COMPETENCIAS Y DISTRIBUCIÓN DE PREGUNTAS
+
+La evaluación comprende tres competencias:
+
+**Competencia 1: Indaga mediante métodos científicos para construir sus conocimientos.**
+- Primaria: preguntas 1 al 6.
+- Secundaria: distribución según la clave configurada.
+- Nivel Inicio: 0 a 2 aciertos.
+- Nivel Proceso: 3 a 4 aciertos.
+- Nivel Logrado: 5 a 6 aciertos.
+
+**Competencia 2: Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo.**
+- Primaria: preguntas 7 al 12.
+- Secundaria: distribución según la clave configurada.
+- Nivel Inicio: 0 a 2 aciertos.
+- Nivel Proceso: 3 a 4 aciertos.
+- Nivel Logrado: 5 a 6 aciertos.
+
+**Competencia 3: Diseña y construye soluciones tecnológicas para resolver problemas de su entorno.**
+- Primaria: preguntas 13 al 16.
+- Secundaria: distribución según la clave configurada.
+- Nivel Inicio: 0 a 2 aciertos.
+- Nivel Proceso: 3 aciertos.
+- Nivel Logrado: 4 aciertos.
+
+**Distribución especial de 1.º de secundaria**
+
+Para 1.º de secundaria se mantiene la distribución establecida en el referente de UGEL:
+
+- Indaga: preguntas 1, 2, 3, 5, 7 y 9 (6 ítems).
+- Explica: preguntas 4, 6, 8, 14, 15 y 16 (6 ítems).
+- Diseña: preguntas 10, 11, 12 y 13 (4 ítems).
+
+Esta distribución especial se encuentra contemplada en la configuración del módulo.
+
+## 6. PONDERACIÓN Y RESULTADO GLOBAL
+
+Las tres competencias tienen la misma ponderación:
+
+- Indaga: 33.33 %.
+- Explica: 33.33 %.
+- Diseña: 33.33 %.
+
+El resultado global se determina considerando el promedio de los porcentajes de logro de las tres competencias.
+
+**Niveles de logro global:**
+- Inicio: menor o igual al 50 %.
+- Proceso: mayor al 50 % y menor o igual al 75 %.
+- Logrado: mayor al 75 %.
+
+Los umbrales pueden modificarse desde `config_cyt.py`, según los criterios establecidos para la evaluación.
+
+## 7. ARCHIVOS GENERADOS
+
+Al ejecutar el módulo se generan los siguientes archivos:
+
+**Base procesada:**
+
+`CYT\resultados\BASE_PROCESADA_CYT.xlsx`
+
+Contiene los resultados individuales de los estudiantes, respuestas procesadas, cantidad de aciertos, resultados por competencia y niveles de logro.
+
+**Reporte general consolidado:**
+
+`CYT\resultados\REPORTES_CYT\REPORTE_GENERAL_CYT.xlsx`
+
+Contiene los resultados consolidados de Ciencia y Tecnología.
+
+**Reportes por institución educativa:**
+
+`CYT\resultados\REPORTES_CYT\REPORTES_CYT_POR_INSTITUCION.zip`
+
+Contiene los reportes individuales de las instituciones educativas, organizados en archivos Excel.
+
+Además, se genera una carpeta con un archivo Excel por cada institución educativa.
+
+## 8. CONSIDERACIONES IMPORTANTES
+
+- El archivo de entrada debe conservar la estructura esperada por el módulo.
+- Las claves de respuestas deben estar correctamente configuradas.
+- Los nombres de las instituciones educativas deben estar correctamente registrados para evitar duplicidades.
+- Se recomienda mantener una copia de seguridad de los archivos originales.
+- Los archivos generados se actualizan al ejecutar nuevamente el proceso.
+- No modificar manualmente los archivos de resultados mientras se ejecuta el procesamiento.
+
+---
+
+**TUKUYRICUY 2026**  
+**Sistematización de resultados y generación de reportes**  
+**ÁREA: CIENCIA Y TECNOLOGÍA**

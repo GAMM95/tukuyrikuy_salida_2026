@@ -1,8 +1,15 @@
+# ================================================================
+# TUKUYRICUY 2026
+# GENERADOR DE REPORTES - PERSONAL SOCIAL (PRIMARIA)
+# Archivo: reportes_personal_social.py
+# Estructura adaptada de reportes_matematica.py
+# ================================================================
+
 import re
 import zipfile
-from pathlib import Path
 
 import pandas as pd
+
 from openpyxl import Workbook
 from openpyxl.chart import BarChart, Reference
 from openpyxl.chart.label import DataLabelList
@@ -11,288 +18,830 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 
 from config_personal_social import (
-    AREA, CARPETA_RESULTADOS, CARPETA_REPORTES_IE,
-    NOMBRE_ARCHIVO_GENERAL, NOMBRE_ARCHIVO_ZIP,
-    COMPETENCIAS, NIVELES, COLORES, COLUMNAS_IDENTIFICACION,
+    AREA,
+    CARPETA_RESULTADOS,
+    CARPETA_REPORTES_IE,
+    NOMBRE_ARCHIVO_GENERAL,
+    NOMBRE_ARCHIVO_ZIP,
+    COMPETENCIAS,
+    NIVELES,
+    COLORES,
+    COLUMNAS_IDENTIFICACION,
+    COLUMNAS_RESULTADO_GLOBAL,
+    COLUMNAS_DETALLE_INSTITUCION,
 )
 
 
-def fill(hex_color):
-    return PatternFill("solid", fgColor=hex_color)
+# ================================================================
+# 1. ESTILOS
+# ================================================================
+
+def relleno(color):
+    return PatternFill(fill_type="solid", fgColor=color)
 
 
-FILL_HEADER = fill(COLORES["CABECERA"])
-FILL_LEVEL = {n: fill(COLORES[n]) for n in NIVELES}
-THIN_BORDER = Border(
-    left=Side(style="thin", color=COLORES["BORDE"]),
-    right=Side(style="thin", color=COLORES["BORDE"]),
-    top=Side(style="thin", color=COLORES["BORDE"]),
-    bottom=Side(style="thin", color=COLORES["BORDE"]),
+FILL_CABECERA = relleno(COLORES["CABECERA"])
+FILL_GRIS = relleno(COLORES["GRIS_CLARO"])
+
+FILLS_NIVELES = {
+    nivel: relleno(COLORES[nivel])
+    for nivel in NIVELES
+}
+
+BORDE = Border(
+    bottom=Side(
+        style="thin",
+        color=COLORES["GRIS_MEDIO"]
+    )
 )
 
 
-def safe_filename(value):
-    value = re.sub(r'[\\/*?:"<>|]', "_", str(value))
-    value = re.sub(r"\s+", "_", value.strip())
-    return value[:100] or "SIN_NOMBRE"
+# ================================================================
+# 2. FUNCIONES GENERALES
+# ================================================================
+
+def limpiar_nombre_archivo(nombre):
+    nombre = re.sub(
+        r'[\\/*?:"<>|]',
+        "_",
+        str(nombre).strip()
+    )
+
+    nombre = re.sub(r"\s+", "_", nombre)
+
+    return nombre[:120] or "SIN_NOMBRE"
 
 
-def preparar_hoja(ws, titulo, subtitulo=None):
-    ws.sheet_view.showGridLines = False
-    ws.merge_cells("A1:H1")
-    ws["A1"] = titulo
-    ws["A1"].font = Font(bold=True, color=COLORES["BLANCO"], size=15)
-    ws["A1"].fill = FILL_HEADER
-    ws["A1"].alignment = Alignment(horizontal="center")
-    ws.row_dimensions[1].height = 28
-    if subtitulo:
-        ws.merge_cells("A2:H2")
-        ws["A2"] = subtitulo
-        ws["A2"].font = Font(italic=True, color=COLORES["TEXTO"], size=10)
-        ws["A2"].alignment = Alignment(horizontal="center")
-
-
-def escribir_dataframe(ws, df, start_row=4, start_col=1):
-    for j, nombre in enumerate(df.columns, start_col):
-        celda = ws.cell(start_row, j, str(nombre))
-        celda.font = Font(bold=True, color="FFFFFF")
-        celda.fill = FILL_HEADER
-        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        celda.border = THIN_BORDER
-
-    for i, fila in enumerate(df.itertuples(index=False, name=None), start_row + 1):
-        for j, valor in enumerate(fila, start_col):
-            if pd.isna(valor):
-                valor = None
-            celda = ws.cell(i, j, valor)
-            celda.border = THIN_BORDER
-            celda.alignment = Alignment(vertical="center", wrap_text=True)
-            nombre_col = str(df.columns[j - start_col]).upper()
-            if nombre_col.startswith("%") or "PORCENTAJE" in nombre_col:
-                celda.number_format = "0.0%"
-            elif "PUNTAJE" in nombre_col:
-                celda.number_format = "0.0"
-            elif nombre_col in ("ESTUDIANTES", "CORRECTAS", "INCORRECTAS"):
-                celda.number_format = "#,##0"
-
-    ultima_fila = start_row + len(df)
-    ultima_col = start_col + len(df.columns) - 1
-    if len(df.columns):
-        ws.auto_filter.ref = (
-            f"{get_column_letter(start_col)}{start_row}:"
-            f"{get_column_letter(ultima_col)}{ultima_fila}"
+def escribir_cabecera(ws, fila, columnas):
+    for numero, nombre in enumerate(columnas, start=1):
+        celda = ws.cell(
+            row=fila,
+            column=numero,
+            value=nombre
         )
-    ws.freeze_panes = f"A{start_row + 1}"
 
-    for col in range(start_col, ultima_col + 1):
-        letra = get_column_letter(col)
-        max_len = 12
-        for row in range(start_row, min(ultima_fila, start_row + 100) + 1):
-            valor = ws.cell(row, col).value
-            if valor is not None:
-                max_len = max(max_len, min(len(str(valor)) + 2, 42))
-        ws.column_dimensions[letra].width = max_len
+        celda.fill = FILL_CABECERA
 
-    # Colorear las columnas que contienen niveles de logro.
-    for j, nombre in enumerate(df.columns, start_col):
-        if str(nombre).endswith("_NIVEL") or str(nombre) == "NIVEL_LOGRO_GLOBAL":
-            letra = get_column_letter(j)
-            for nivel, color in FILL_LEVEL.items():
+        celda.font = Font(
+            bold=True,
+            color=COLORES["BLANCO"],
+            size=10
+        )
+
+        celda.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+            wrap_text=True
+        )
+
+        celda.border = BORDE
+
+    ws.row_dimensions[fila].height = 35
+
+
+def escribir_titulo(ws, titulo, subtitulo=None, hasta="H"):
+    ws.merge_cells(f"A1:{hasta}1")
+
+    ws["A1"] = titulo
+    ws["A1"].fill = FILL_CABECERA
+
+    ws["A1"].font = Font(
+        bold=True,
+        color=COLORES["BLANCO"],
+        size=16
+    )
+
+    ws["A1"].alignment = Alignment(
+        horizontal="center",
+        vertical="center"
+    )
+
+    ws.row_dimensions[1].height = 35
+
+    if subtitulo:
+        ws.merge_cells(f"A2:{hasta}2")
+
+        ws["A2"] = subtitulo
+
+        ws["A2"].font = Font(
+            italic=True,
+            color=COLORES["TEXTO"],
+            size=10
+        )
+
+        ws["A2"].alignment = Alignment(
+            horizontal="center"
+        )
+
+
+def es_columna_nivel(nombre):
+    return (
+            nombre == "NIVEL_LOGRO_GLOBAL"
+            or (
+                    nombre.startswith("COMP_")
+                    and nombre.endswith("_NIVEL")
+            )
+    )
+
+def es_columna_porcentaje(nombre):
+    """Columnas que guardan una fracción (0-1) y se muestran como 43.75 %."""
+    return (
+        nombre in ("PORCENTAJE_FUENTE_NORMALIZADO", "PORCENTAJE_CALCULADO")
+        or (nombre.startswith("COMP_") and nombre.endswith("_PORCENTAJE"))
+    )
+
+# ================================================================
+# 3. ESCRIBIR TABLAS EN EXCEL
+# ================================================================
+
+def escribir_tabla(ws, df):
+    columnas = list(df.columns)
+
+    escribir_cabecera(ws, 1, columnas)
+
+    datos = df.astype(object).where(df.notna(), None)
+
+    for fila in datos.itertuples(index=False, name=None):
+        ws.append(list(fila))
+
+    ultima = ws.max_row
+
+    for numero, columna in enumerate(columnas, start=1):
+
+        letra = get_column_letter(numero)
+
+        if columna.startswith("% "):
+            formato = "0.0%"
+        elif es_columna_porcentaje(columna):
+            formato = "0.00%"
+        elif columna.startswith("PUNTAJE"):
+            formato = "0.0"
+        elif columna == "PORCENTAJE_PROMEDIO":
+            formato = "0.0"
+        elif columna == "PORCENTAJE":
+            formato = '0.0"%"'
+        else:
+            formato = None
+
+        if formato:
+
+            for celda in ws[letra][1:]:
+                celda.number_format = formato
+
+        # Colorear los niveles de logro.
+        if es_columna_nivel(columna) and ultima >= 2:
+
+            rango = f"{letra}2:{letra}{ultima}"
+
+            for nivel in NIVELES:
                 ws.conditional_formatting.add(
-                    f"{letra}{start_row+1}:{letra}{ultima_fila}",
+                    rango,
                     CellIsRule(
                         operator="equal",
                         formula=[f'"{nivel}"'],
-                        fill=color,
-                    ),
+                        fill=FILLS_NIVELES[nivel],
+                        font=Font(
+                            bold=True,
+                            color=COLORES["TEXTO"]
+                        )
+                    )
                 )
 
+        muestra = datos[columna].head(200)
+
+        largo = max(
+            [len(str(columna)) // 2]
+            + [
+                len(str(v))
+                for v in muestra
+                if v is not None
+            ]
+        )
+
+        ws.column_dimensions[letra].width = min(
+            max(largo + 3, 12),
+            45
+        )
+
+    ws.freeze_panes = "A2"
+    ws.sheet_view.showGridLines = False
+
+    if ultima >= 2:
+        ws.auto_filter.ref = ws.dimensions
+
+
+# ================================================================
+# 4. RESUMEN DE COMPETENCIAS
+# ================================================================
 
 def resumen_competencias(df):
+    total = len(df)
+
     filas = []
-    for c in COMPETENCIAS:
-        col_nivel = f"{c['codigo']}_NIVEL"
-        col_pct = f"{c['codigo']}_PORCENTAJE"
+
+    for competencia in COMPETENCIAS:
+
+        codigo = competencia["codigo"]
+
+        niveles = df[f"{codigo}_NIVEL"]
+
         fila = {
-            "COMPETENCIA": c["nombre"],
-            "ESTUDIANTES": len(df),
-            "ACIERTOS_PROMEDIO": df[f"{c['codigo']}_ACIERTOS"].mean(),
-            "PORCENTAJE_PROMEDIO": df[col_pct].mean(),
+            "COMPETENCIA": competencia["nombre"],
+            "ESTUDIANTES": total,
+            "ACIERTOS_PROMEDIO": df[
+                f"{codigo}_ACIERTOS"
+            ].mean(),
+            "PORCENTAJE_PROMEDIO": df[
+                f"{codigo}_PORCENTAJE"
+            ].mean()
         }
+
         for nivel in NIVELES:
-            cantidad = int((df[col_nivel] == nivel).sum())
-            fila[f"{nivel}"] = cantidad
-            fila[f"% {nivel}"] = cantidad / len(df) if len(df) else 0
+            fila[nivel] = int(
+                niveles.eq(nivel).sum()
+            )
+
+        for nivel in NIVELES:
+            fila[f"% {nivel}"] = (
+                fila[nivel] / total
+                if total else 0
+            )
+
         filas.append(fila)
+
+    # Resultado global.
+    fila = {
+        "COMPETENCIA": "RESULTADO GLOBAL",
+        "ESTUDIANTES": total,
+        "ACIERTOS_PROMEDIO": df["CORRECTAS"].mean(),
+        "PORCENTAJE_PROMEDIO": df[
+            "PORCENTAJE_GLOBAL"
+        ].mean()
+    }
+
+    for nivel in NIVELES:
+        fila[nivel] = int(
+            df["NIVEL_LOGRO_GLOBAL"].eq(nivel).sum()
+        )
+
+    for nivel in NIVELES:
+        fila[f"% {nivel}"] = (
+            fila[nivel] / total
+            if total else 0
+        )
+
+    filas.append(fila)
+
     return pd.DataFrame(filas)
 
+
+# ================================================================
+# 5. TABLAS RESUMEN POR GRADO, INSTITUCIÓN Y SECCIÓN
+# ================================================================
 
 def tabla_resumen(df, claves):
-    filas = []
-    agrupador = claves[0] if len(claves) == 1 else claves
-    for clave, grupo in df.groupby(agrupador, dropna=False):
-        valores = clave if isinstance(clave, tuple) else (clave,)
-        fila = {k: v for k, v in zip(claves, valores)}
-        fila["ESTUDIANTES"] = len(grupo)
+    d = df.sort_values(claves).copy()
 
-        for nivel in NIVELES:
-            n = int((grupo["NIVEL_LOGRO_GLOBAL"] == nivel).sum())
-            fila[nivel] = n
-            fila[f"% {nivel}"] = n / len(grupo) if len(grupo) else 0
+    for nivel in NIVELES:
+        d[f"_{nivel}"] = (
+            d["NIVEL_LOGRO_GLOBAL"].eq(nivel)
+        )
 
-        fila["PUNTAJE_GLOBAL_PROMEDIO"] = grupo["PUNTAJE_GLOBAL"].mean()
+    g = d.groupby(
+        claves,
+        sort=False,
+        dropna=False
+    )
+
+    tabla = (
+        g.size()
+        .rename("ESTUDIANTES")
+        .to_frame()
+    )
+
+    for nivel in NIVELES:
+        tabla[nivel] = (
+            g[f"_{nivel}"]
+            .sum()
+            .astype(int)
+        )
+
+    for nivel in NIVELES:
+        tabla[f"% {nivel}"] = (
+                tabla[nivel] / tabla["ESTUDIANTES"]
+        )
+
+    tabla["PUNTAJE_PROMEDIO"] = (
+        g["PUNTAJE_GLOBAL_PONDERADO"].mean()
+    )
+
+    for competencia in COMPETENCIAS:
+        codigo = competencia["codigo"]
+
+        tabla[
+            f"% PROM. {competencia['corto']}"
+        ] = (
+                g[f"{codigo}_PORCENTAJE"].mean() / 100
+        )
+
+    tabla = tabla.reset_index()
+
+    return tabla
+
+
+# ================================================================
+# 6. DETALLE DE ESTUDIANTES
+# ================================================================
+
+def preparar_detalle(df, completo=False):
+
+    if completo:
+        columnas = list(COLUMNAS_DETALLE_INSTITUCION)
+    else:
+        columnas = [c for c in COLUMNAS_IDENTIFICACION if c in df.columns]
+        columnas += ["CORRECTAS", "INCORRECTAS", "TOTAL_PREGUNTAS", "PORCENTAJE"]
+
         for c in COMPETENCIAS:
-            fila[f"% PROM. {c['corto']}"] = grupo[f"{c['codigo']}_PORCENTAJE"].mean()
-        filas.append(fila)
+            codigo = c["codigo"]
+            columnas += [
+                f"{codigo}_ACIERTOS",
+                f"{codigo}_TOTAL",
+                f"{codigo}_PORCENTAJE",
+                f"{codigo}_NIVEL",
+            ]
 
-    return pd.DataFrame(filas)
+        columnas += list(COLUMNAS_RESULTADO_GLOBAL)
 
+    detalle = df[[c for c in columnas if c in df.columns]].copy()
 
-def detalle_reporte(df):
-    columnas = [c for c in COLUMNAS_IDENTIFICACION if c in df.columns]
-    columnas += ["CORRECTAS", "INCORRECTAS", "PORCENTAJE"]
+    # COMP_x_PORCENTAJE viene de 0 a 100; se pasa a fracción para mostrarlo en %.
     for c in COMPETENCIAS:
-        columnas += [
-            f"{c['codigo']}_ACIERTOS",
-            f"{c['codigo']}_TOTAL",
-            f"{c['codigo']}_PORCENTAJE",
-            f"{c['codigo']}_NIVEL",
-        ]
-    columnas += ["PUNTAJE_GLOBAL", "NIVEL_LOGRO_GLOBAL"]
-    return df[[c for c in columnas if c in df.columns]].copy()
+        col = f"{c['codigo']}_PORCENTAJE"
+        if col in detalle.columns:
+            detalle[col] = detalle[col] / 100
+
+    return detalle
 
 
-def agregar_grafico_niveles(ws, df_resumen, titulo, fila=4, columna=10):
-    if df_resumen.empty or not all(n in df_resumen.columns for n in NIVELES):
-        return
-    # Tabla auxiliar con conteos por nivel, fuera del área principal.
-    ws.cell(fila, columna, "NIVEL")
-    ws.cell(fila, columna + 1, "ESTUDIANTES")
-    for r, nivel in enumerate(NIVELES, fila + 1):
-        ws.cell(r, columna, nivel)
-        ws.cell(r, columna + 1, int(df_resumen[nivel].sum()))
-    chart = BarChart()
-    chart.type = "bar"
-    chart.style = 10
-    chart.grouping = "stacked"
-    chart.overlap = 100
-    chart.title = titulo
-    chart.y_axis.title = "Nivel de logro"
-    chart.x_axis.title = "Estudiantes"
-    data = Reference(ws, min_col=columna + 1, min_row=fila, max_row=fila + len(NIVELES))
-    cats = Reference(ws, min_col=columna, min_row=fila + 1, max_row=fila + len(NIVELES))
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(cats)
-    chart.height = 6
-    chart.width = 11
-    ws.add_chart(chart, "J4")
+# ================================================================
+# 7. GRÁFICOS DEL DASHBOARD
+# ================================================================
+
+def agregar_grafico(
+        ws_dash,
+        ws_datos,
+        tabla,
+        col_categorias,
+        titulo,
+        ancla
+):
+    columnas = list(tabla.columns)
+
+    col_ini = columnas.index("% INICIO") + 1
+    col_fin = columnas.index("% LOGRADO") + 1
+
+    ultima = len(tabla) + 1
+
+    grafico = BarChart()
+
+    grafico.type = "col"
+    grafico.grouping = "percentStacked"
+    grafico.overlap = 100
+    grafico.gapWidth = 60
+
+    grafico.title = titulo
+
+    grafico.width = 26
+    grafico.height = 9
+
+    grafico.legend.position = "b"
+
+    grafico.add_data(
+        Reference(
+            ws_datos,
+            min_col=col_ini,
+            max_col=col_fin,
+            min_row=1,
+            max_row=ultima
+        ),
+        titles_from_data=True
+    )
+
+    grafico.set_categories(
+        Reference(
+            ws_datos,
+            min_col=col_categorias,
+            min_row=2,
+            max_row=ultima
+        )
+    )
+
+    for serie, nivel in zip(
+            grafico.series,
+            NIVELES
+    ):
+        serie.graphicalProperties.solidFill = (
+            COLORES[nivel]
+        )
+
+        serie.graphicalProperties.line.solidFill = (
+            COLORES["BORDE"]
+        )
+
+    grafico.dataLabels = DataLabelList()
+
+    grafico.dataLabels.showVal = True
+    grafico.dataLabels.showSerName = False
+    grafico.dataLabels.showCatName = False
+    grafico.dataLabels.showLegendKey = False
+
+    grafico.x_axis.delete = False
+    grafico.y_axis.delete = False
+
+    grafico.y_axis.number_format = "0%"
+
+    ws_dash.add_chart(
+        grafico,
+        ancla
+    )
 
 
-def construir_libro(df, ruta, nombre):
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "DASHBOARD"
-    preparar_hoja(ws, f"REPORTE DE {AREA} - PRIMARIA", nombre)
+def construir_dashboard(
+        ws,
+        df,
+        titulo,
+        ws_comp,
+        comp,
+        ws_grupos,
+        grupos
+):
+    escribir_titulo(
+        ws,
+        titulo,
+        f"Resultados de {AREA} - TUKUYRICUY 2026"
+    )
 
-    total = len(df)
-    instituciones = df["INSTITUCION"].nunique()
-    promedio = df["PUNTAJE_GLOBAL"].mean()
-    logrado = (df["NIVEL_LOGRO_GLOBAL"] == "LOGRADO").mean()
+    for letra in "ABCDEFGH":
+        ws.column_dimensions[letra].width = 18
 
     indicadores = [
-        ("TOTAL ESTUDIANTES", total),
-        ("INSTITUCIONES", instituciones),
-        ("PUNTAJE GLOBAL PROMEDIO", promedio),
-        ("% EN NIVEL LOGRADO", logrado),
+
+        (
+            "A",
+            "B",
+            "ESTUDIANTES",
+            len(df),
+            "#,##0"
+        ),
+
+        (
+            "C",
+            "D",
+            "INSTITUCIONES",
+            df["INSTITUCION"].nunique(),
+            "#,##0"
+        ),
+
+        (
+            "E",
+            "F",
+            "PUNTAJE PROMEDIO (de 100)",
+            df["PUNTAJE_GLOBAL_PONDERADO"].mean(),
+            "0.0"
+        ),
+
+        (
+            "G",
+            "H",
+            "% EN LOGRADO",
+            df["NIVEL_LOGRO_GLOBAL"].eq("LOGRADO").mean(),
+            "0.0%"
+        )
+
     ]
-    for idx, (etiqueta, valor) in enumerate(indicadores, 4):
-        ws.cell(idx, 1, etiqueta).font = Font(bold=True, color="FFFFFF")
-        ws.cell(idx, 1).fill = FILL_HEADER
-        ws.cell(idx, 2, float(valor) if isinstance(valor, (int, float)) else valor)
-        ws.cell(idx, 2).font = Font(bold=True, size=12)
-        if etiqueta.startswith("%"):
-            ws.cell(idx, 2).number_format = "0.0%"
-        elif "PROMEDIO" in etiqueta:
-            ws.cell(idx, 2).number_format = "0.0"
+
+    for ini, fin, etiqueta, valor, formato in indicadores:
+        ws.merge_cells(f"{ini}4:{fin}4")
+        ws.merge_cells(f"{ini}5:{fin}5")
+
+        ws[f"{ini}4"] = etiqueta
+
+        ws[f"{ini}4"].fill = FILL_GRIS
+
+        ws[f"{ini}4"].font = Font(
+            bold=True,
+            color=COLORES["TEXTO"],
+            size=10
+        )
+
+        ws[f"{ini}4"].alignment = Alignment(
+            horizontal="center"
+        )
+
+        ws[f"{ini}5"] = valor
+
+        ws[f"{ini}5"].number_format = formato
+
+        ws[f"{ini}5"].fill = FILL_GRIS
+
+        ws[f"{ini}5"].font = Font(
+            bold=True,
+            color=COLORES["TEXTO"],
+            size=18
+        )
+
+        ws[f"{ini}5"].alignment = Alignment(
+            horizontal="center"
+        )
+
+    ws.row_dimensions[5].height = 32
+
+    # Gráfico 1: resultados por competencia.
+    agregar_grafico(
+        ws,
+        ws_comp,
+        comp,
+        1,
+        "Niveles de logro por competencia",
+        "A8"
+    )
+
+    # Gráfico 2: resultados globales por grado.
+    agregar_grafico(
+        ws,
+        ws_grupos,
+        grupos,
+        1,
+        "Nivel de logro global por nivel y grado",
+        "A28"
+    )
+
+    ws.sheet_view.showGridLines = False
+
+
+# ================================================================
+# 8. CREAR LIBRO EXCEL COMPLETO
+# ================================================================
+
+def crear_libro(df, titulo, ruta, hojas_extra, detalle_completo=False):
+    if df is None or df.empty:
+        raise ValueError(
+            "No existen datos para construir el reporte."
+        )
+
+    wb = Workbook()
+
+    # ------------------------------------------------------------
+    # 8.1. DASHBOARD
+    # ------------------------------------------------------------
+
+    ws_dash = wb.active
+    ws_dash.title = "DASHBOARD"
+
+    # ------------------------------------------------------------
+    # 8.2. RESUMEN DE COMPETENCIAS
+    # ------------------------------------------------------------
 
     comp = resumen_competencias(df)
-    ws_comp = wb.create_sheet("RESUMEN_COMPETENCIAS")
-    preparar_hoja(ws_comp, "RESULTADOS POR COMPETENCIA")
-    escribir_dataframe(ws_comp, comp)
 
-    grado = tabla_resumen(df, ["GRADO"])
-    ws_grado = wb.create_sheet("RESUMEN_GRADOS")
-    preparar_hoja(ws_grado, "RESULTADOS POR GRADO")
-    escribir_dataframe(ws_grado, grado)
+    ws_comp = wb.create_sheet(
+        "RESUMEN_COMPETENCIAS"
+    )
 
-    inst = tabla_resumen(df, ["INSTITUCION"])
-    ws_inst = wb.create_sheet("RESUMEN_INSTITUCIONES")
-    preparar_hoja(ws_inst, "RESULTADOS POR INSTITUCIÓN")
-    escribir_dataframe(ws_inst, inst)
+    escribir_tabla(
+        ws_comp,
+        comp
+    )
 
-    detalle = detalle_reporte(df)
-    ws_det = wb.create_sheet("DETALLE_ESTUDIANTES")
-    preparar_hoja(ws_det, "DETALLE DE ESTUDIANTES")
-    escribir_dataframe(ws_det, detalle)
+    # ------------------------------------------------------------
+    # 8.3. RESUMEN DE GRADOS
+    # ------------------------------------------------------------
 
-    # Gráfico de distribución global por niveles en dashboard.
-    conteos = df["NIVEL_LOGRO_GLOBAL"].value_counts()
-    ws["A11"] = "NIVEL"
-    ws["B11"] = "ESTUDIANTES"
-    for r, nivel in enumerate(NIVELES, 12):
-        ws.cell(r, 1, nivel)
-        ws.cell(r, 2, int(conteos.get(nivel, 0)))
-        ws.cell(r, 1).fill = FILL_LEVEL[nivel]
-    chart = BarChart()
-    chart.type = "col"
-    chart.style = 10
-    chart.title = "Distribución global por niveles"
-    chart.y_axis.title = "Estudiantes"
-    chart.x_axis.title = "Nivel"
-    chart.add_data(Reference(ws, min_col=2, min_row=11, max_row=14), titles_from_data=True)
-    chart.set_categories(Reference(ws, min_col=1, min_row=12, max_row=14))
-    chart.height = 7
-    chart.width = 13
-    ws.add_chart(chart, "D4")
+    grupos = tabla_resumen(
+        df,
+        ["NIVEL", "GRADO"]
+    )
 
-    # Indicadores de niveles por competencia en una hoja independiente.
-    ws_comp.freeze_panes = "A5"
+    ws_grupos = wb.create_sheet(
+        "RESUMEN_GRADOS"
+    )
+
+    escribir_tabla(
+        ws_grupos,
+        grupos
+    )
+
+    # ------------------------------------------------------------
+    # 8.4. HOJAS ADICIONALES
+    # ------------------------------------------------------------
+
+    for nombre, claves in hojas_extra:
+        ws = wb.create_sheet(nombre)
+
+        escribir_tabla(
+            ws,
+            tabla_resumen(df, claves)
+        )
+
+    # ------------------------------------------------------------
+    # 8.5. DETALLE DE ESTUDIANTES
+    # ------------------------------------------------------------
+
+    ws_detalle = wb.create_sheet(
+        "DETALLE_ESTUDIANTES"
+    )
+
+    escribir_tabla(
+        ws_detalle,
+        preparar_detalle(df, completo=detalle_completo)
+    )
+
+    # ------------------------------------------------------------
+    # 8.6. CONSTRUIR DASHBOARD
+    # ------------------------------------------------------------
+
+    construir_dashboard(
+        ws_dash,
+        df,
+        titulo,
+        ws_comp,
+        comp,
+        ws_grupos,
+        grupos
+    )
+
+    # ------------------------------------------------------------
+    # 8.7. GUARDAR LIBRO
+    # ------------------------------------------------------------
+
     wb.save(ruta)
 
 
+# ================================================================
+# 9. GENERAR REPORTE GENERAL
+# ================================================================
+
 def generar_reporte_general(df):
-    ruta = CARPETA_RESULTADOS / NOMBRE_ARCHIVO_GENERAL
-    construir_libro(df, ruta, "Consolidado de todas las instituciones")
-    print(f"Reporte general generado: {ruta}")
+    ruta = (
+            CARPETA_RESULTADOS
+            / NOMBRE_ARCHIVO_GENERAL
+    )
+
+    crear_libro(
+        df,
+        f"REPORTE GENERAL - {AREA}",
+        ruta,
+        hojas_extra=[
+            (
+                "RESUMEN_INSTITUCIONES",
+                ["INSTITUCION", "NIVEL"]
+            )
+        ]
+    )
+
+    print(
+        f"Reporte general: {ruta}"
+    )
+
     return ruta
 
 
+# ================================================================
+# 10. GENERAR REPORTES POR INSTITUCIÓN
+# ================================================================
+
 def generar_reportes_instituciones(df):
-    CARPETA_REPORTES_IE.mkdir(parents=True, exist_ok=True)
-    rutas = []
-    for institucion, grupo in df.groupby("INSTITUCION", dropna=False):
-        nombre = safe_filename(institucion)
-        ruta = CARPETA_REPORTES_IE / f"REPORTE_PERSONAL_SOCIAL_{nombre}.xlsx"
-        construir_libro(grupo.copy(), ruta, str(institucion))
-        rutas.append(ruta)
+    CARPETA_REPORTES_IE.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
-    zip_path = CARPETA_RESULTADOS / NOMBRE_ARCHIVO_ZIP
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archivo_zip:
-        for ruta in rutas:
-            archivo_zip.write(ruta, arcname=ruta.name)
+    instituciones = sorted(
+        df["INSTITUCION"].dropna().unique()
+    )
 
-    print(f"Reportes individuales generados: {len(rutas)}")
-    print(f"ZIP generado: {zip_path}")
-    return rutas, zip_path
+    for numero, institucion in enumerate(
+            instituciones,
+            start=1
+    ):
+        grupo = df[
+            df["INSTITUCION"] == institucion
+            ].copy()
 
+        nombre = (
+                "REPORTE_"
+                + limpiar_nombre_archivo(institucion)
+                + "_PERSONAL_SOCIAL.xlsx"
+        )
+
+        ruta = CARPETA_REPORTES_IE / nombre
+
+        crear_libro(
+            grupo,
+            f"{institucion} - {AREA}",
+            ruta,
+            hojas_extra=[
+                (
+                    "RESUMEN_SECCIONES",
+                    ["NIVEL", "GRADO", "SECCION"]
+                )
+            ],
+            detalle_completo=True,
+        )
+
+        print(
+            f"[{numero}/{len(instituciones)}] {nombre}"
+        )
+
+    return len(instituciones)
+
+
+# ================================================================
+# 11. COMPRIMIR REPORTES INSTITUCIONALES
+# ================================================================
+
+def comprimir_reportes():
+    ruta_zip = (
+            CARPETA_RESULTADOS
+            / NOMBRE_ARCHIVO_ZIP
+    )
+
+    with zipfile.ZipFile(
+            ruta_zip,
+            "w",
+            zipfile.ZIP_DEFLATED
+    ) as zf:
+        for archivo in sorted(
+                CARPETA_REPORTES_IE.glob("*.xlsx")
+        ):
+            zf.write(
+                archivo,
+                arcname=archivo.name
+            )
+
+    print(
+        f"ZIP de instituciones: {ruta_zip}"
+    )
+
+    return ruta_zip
+
+
+# ================================================================
+# 12. GENERAR TODOS LOS REPORTES
+# ================================================================
 
 def generar_todos_los_reportes(df):
     if df is None or df.empty:
-        raise ValueError("No hay datos para generar reportes.")
-    df = df.sort_values(
-        ["INSTITUCION", "GRADO", "SECCION", "APELLIDOS", "NOMBRES"],
-        kind="stable"
+        raise ValueError(
+            "No hay datos para generar reportes."
+        )
+
+    orden = [
+        columna
+        for columna in [
+            "INSTITUCION",
+            "NIVEL",
+            "GRADO",
+            "SECCION",
+            "APELLIDOS",
+            "NOMBRES"
+        ]
+        if columna in df.columns
+    ]
+
+    df = (
+        df.sort_values(orden, kind="stable")
+        .reset_index(drop=True)
     )
+
+    # Crear carpeta de resultados.
+    CARPETA_RESULTADOS.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
     generar_reporte_general(df)
-    generar_reportes_instituciones(df)
-    print("\nGENERACIÓN DE REPORTES FINALIZADA.")
+
+    total = generar_reportes_instituciones(df)
+
+    comprimir_reportes()
+
+    print(
+        f"\nReportes institucionales generados: {total}"
+    )
+
+    print(
+        "\nGENERACIÓN DE REPORTES FINALIZADA."
+    )
+
+
+# ================================================================
+# 13. EJECUCIÓN INDEPENDIENTE
+# ================================================================
+
+if __name__ == "__main__":
+    from procesamiento_personal_social import procesar_datos
+
+    df_procesado = procesar_datos()
+
+    generar_todos_los_reportes(df_procesado)

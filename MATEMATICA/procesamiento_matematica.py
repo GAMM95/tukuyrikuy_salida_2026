@@ -4,6 +4,7 @@
 # Archivo: procesamiento_matematica.py
 # ================================================================
 
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from config_matematica import (
     COLUMNAS_RESULTADOS,
     COLUMNAS_COMPETENCIAS,
     COLUMNAS_RESULTADO_GLOBAL,
+    COLUMNAS_PORCENTAJES,
     clasificar_nivel_competencia,
     calcular_puntaje_ponderado,
     clasificar_nivel_global,
@@ -28,10 +30,7 @@ from config_matematica import (
 )
 
 
-# ------------------------------------------------
 # 1. NORMALIZAR NOMBRES DE COLUMNAS
-# ------------------------------------------------
-
 def normalizar_columnas(df):
     df = df.copy()
 
@@ -51,7 +50,6 @@ def normalizar_columnas(df):
 # ------------------------------------------------
 
 def agregar_nivel(df, nombre_hoja):
-
     if "NIVEL" in df.columns:
         df["NIVEL"] = (
             df["NIVEL"]
@@ -126,12 +124,13 @@ def eliminar_columnas_calculadas(df):
     a_eliminar = [
         c for c in df.columns
         if c.startswith("COMP_")
+        or c.startswith("PORCENTAJE_")
         or c in COLUMNAS_RESULTADOS
         or c in COLUMNAS_RESULTADO_GLOBAL
+        or c in COLUMNAS_PORCENTAJES
     ]
 
     return df.drop(columns=a_eliminar)
-
 
 # ------------------------------------------------
 # 6. CALCULAR RESULTADOS
@@ -188,11 +187,43 @@ def calcular_resultados(df):
 
     return df
 
+# ------------------------------------------------
+# PORCENTAJES DE CONTROL
+# ------------------------------------------------
+
+def normalizar_porcentaje(valor):
+    """Convierte 0.75, 75 o '75%' a 0.75."""
+    if pd.isna(valor):
+        return np.nan
+
+    if isinstance(valor, str):
+        valor = valor.strip().replace("%", "").replace(",", ".")
+
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return np.nan
+
+    return numero / 100 if numero > 1 else numero
+
+
+def agregar_porcentajes(df, porcentaje_origen=None):
+    df = df.copy()
+
+    if porcentaje_origen is not None:
+        df["PORCENTAJE_FUENTE_NORMALIZADO"] = porcentaje_origen.map(
+            normalizar_porcentaje
+        )
+    else:
+        df["PORCENTAJE_FUENTE_NORMALIZADO"] = np.nan
+
+    df["PORCENTAJE_CALCULADO"] = df["CORRECTAS"] / TOTAL_PREGUNTAS
+
+    return df
 
 # ------------------------------------------------
 # 7. ORDENAR COLUMNAS
 # ------------------------------------------------
-
 def ordenar_columnas(df):
     orden = (
         COLUMNAS_IDENTIFICACION
@@ -201,13 +232,13 @@ def ordenar_columnas(df):
         + COLUMNAS_RESULTADOS
         + COLUMNAS_COMPETENCIAS
         + COLUMNAS_RESULTADO_GLOBAL
+        + COLUMNAS_PORCENTAJES
     )
 
     principales = [c for c in orden if c in df.columns]
     otras = [c for c in df.columns if c not in orden]
 
     return df[principales + otras]
-
 
 # ------------------------------------------------
 # 8. PROCESAR UNA HOJA
@@ -224,12 +255,17 @@ def procesar_hoja(nombre_hoja):
 
     validar_columnas_valoracion(df, nombre_hoja)
 
+    # Se guarda el porcentaje del origen antes de recalcular todo
+    porcentaje_origen = (
+        df["PORCENTAJE"].copy() if "PORCENTAJE" in df.columns else None
+    )
+
     df = limpiar_identificacion(df)
     df = eliminar_columnas_calculadas(df)
     df = calcular_resultados(df)
+    df = agregar_porcentajes(df, porcentaje_origen)
 
     return ordenar_columnas(df)
-
 
 # ------------------------------------------------
 # 9. PROCESAR TODAS LAS HOJAS
