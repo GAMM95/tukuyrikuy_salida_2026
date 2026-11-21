@@ -1,46 +1,26 @@
-# -*- coding: utf-8 -*-
-"""
-============================================================
-TUKUYRICUY 2026
-CONFIGURACIÓN DE CIENCIA Y TECNOLOGÍA
-============================================================
+# # ============================================================
+# TUKUYRICUY 2026
+# CONFIGURACIÓN DE CIENCIA Y TECNOLOGÍA
+# ============================================================
 
-Módulo de configuración para el procesamiento y generación
-de reportes de la Evaluación de Salida 2026.
-
-Área: Ciencia y Tecnología
-Niveles: Primaria y Secundaria
-Preguntas: 16
-Competencias: 3
-============================================================
-"""
 
 from pathlib import Path
 from typing import Any
 
-# ============================================================
 # 1. RUTAS DEL PROYECTO
-# ============================================================
-
 CARPETA_PROYECTO = Path(__file__).resolve().parent
 CARPETA_RESOURCES = CARPETA_PROYECTO / "resources"
 CARPETA_RESULTADOS = CARPETA_PROYECTO / "resultados"
 CARPETA_REPORTES = CARPETA_RESULTADOS / "REPORTES_CYT"
 CARPETA_REPORTES_IE = CARPETA_REPORTES / "REPORTES_POR_INSTITUCION"
 
-# ============================================================
 # 2. ARCHIVO EXCEL DE ORIGEN
-# ============================================================
-
 ARCHIVO_ORIGEN = CARPETA_RESOURCES / "RESULTADOS_CIENCIA_TECNOLOGIA.xlsx"
 ARCHIVO_ENTRADA = ARCHIVO_ORIGEN
 HOJAS_ORIGEN = ["RESULTADOS"]
 HOJA_ENTRADA = "RESULTADOS"
 
-# ============================================================
 # 3. ARCHIVOS DE SALIDA
-# ============================================================
-
 ARCHIVO_BASE_PROCESADA = CARPETA_RESULTADOS / "BASE_PROCESADA_CYT.xlsx"
 ARCHIVO_REPORTE_GENERAL = CARPETA_REPORTES / "REPORTE_GENERAL_CYT.xlsx"
 ARCHIVO_ZIP = CARPETA_REPORTES / "REPORTES_CYT_POR_INSTITUCION.zip"
@@ -49,19 +29,15 @@ NOMBRE_ARCHIVO_GENERAL = "REPORTE_GENERAL_CYT.xlsx"
 NOMBRE_ARCHIVO_PROCESADO = "BASE_PROCESADA_CYT.xlsx"
 NOMBRE_ARCHIVO_ZIP = "REPORTES_CYT_POR_INSTITUCION.zip"
 
-# ============================================================
-# 4. INFORMACIÓN GENERAL
-# ============================================================
 
+# 4. INFORMACIÓN GENERAL
 AREA = "CIENCIA Y TECNOLOGÍA"
 NIVELES = ["INICIO", "PROCESO", "LOGRADO"]
 TOTAL_PREGUNTAS = 16
 TOTAL_COMPETENCIAS = 3
 
-# ============================================================
-# 5. GRADOS Y NIVELES EDUCATIVOS
-# ============================================================
 
+# 5. GRADOS Y NIVELES EDUCATIVOS
 GRADOS_POR_NIVEL = {
     "PRIMARIA": [2, 3, 4, 5, 6],
     "SECUNDARIA": [1, 2, 3, 4, 5],
@@ -69,10 +45,7 @@ GRADOS_POR_NIVEL = {
 
 NIVELES_EDUCATIVOS = list(GRADOS_POR_NIVEL.keys())
 
-# ============================================================
 # 6. COMPETENCIAS Y DISTRIBUCIÓN DE PREGUNTAS
-# ============================================================
-
 # Las tres competencias tienen el mismo peso.
 PESO_COMPETENCIA = 1 / 3
 

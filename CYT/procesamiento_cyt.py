@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ================================================================
 # TUKUYRICUY 2026
 # PROCESAMIENTO DE RESULTADOS - CIENCIA Y TECNOLOGÍA

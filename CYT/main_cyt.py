@@ -137,25 +137,16 @@ def main():
 
         print(f"\nEstudiantes procesados: {len(df):,}")
 
-        # ====================================================
         # 4. DIAGNÓSTICO POR NIVEL Y GRADO
-        # ====================================================
-
         mostrar_diagnostico(df)
 
-        # ====================================================
         # 5. GENERAR REPORTES
-        # ====================================================
-
         print("\n[3/4] Generando reporte general...")
         print("[4/4] Generando reportes por institución...")
 
         generar_todos_los_reportes(df)
 
-        # ====================================================
         # FINALIZACIÓN
-        # ====================================================
-
         print("\n" + "=" * 65)
         print("PROCESO FINALIZADO CORRECTAMENTE")
         print("=" * 65)

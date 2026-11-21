@@ -1,18 +1,11 @@
-
 # ============================================================
 # TUKUYRICUY 2026
 # GENERADOR DE REPORTES DE CIENCIAS SOCIALES
 # ============================================================
 
-from config_ccss import (
-    crear_carpetas,
-    validar_configuracion
-)
-
+from config_ccss import (    crear_carpetas,    validar_configuracion)
 from procesamiento_ccss import procesar_datos
-
 from reportes_ccss import generar_todos_los_reportes
-
 
 def main():
     print("=" * 64)

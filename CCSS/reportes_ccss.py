@@ -1,4 +1,3 @@
-
 # ================================================================
 # TUKUYRICUY 2026
 # GENERADOR DE REPORTES - CIENCIAS SOCIALES
@@ -133,19 +132,21 @@ def escribir_titulo(ws, titulo, subtitulo=None, hasta="H"):
 
 def es_columna_nivel(nombre):
     return (
-        nombre == "NIVEL_LOGRO_GLOBAL"
-        or (
-            nombre.startswith("COMP_")
-            and nombre.endswith("_NIVEL")
-        )
+            nombre == "NIVEL_LOGRO_GLOBAL"
+            or (
+                    nombre.startswith("COMP_")
+                    and nombre.endswith("_NIVEL")
+            )
     )
+
 
 def es_columna_porcentaje(nombre):
     """Columnas que guardan una fracción (0-1) y se muestran como 43.75 %."""
     return (
-        nombre in ("PORCENTAJE_FUENTE_NORMALIZADO", "PORCENTAJE_CALCULADO")
-        or (nombre.startswith("COMP_") and nombre.endswith("_PORCENTAJE"))
+            nombre in ("PORCENTAJE_FUENTE_NORMALIZADO", "PORCENTAJE_CALCULADO")
+            or (nombre.startswith("COMP_") and nombre.endswith("_PORCENTAJE"))
     )
+
 
 def escribir_tabla(ws, df):
     """Escribe un DataFrame desde A1 con cabecera y formato."""
@@ -309,7 +310,7 @@ def tabla_resumen(df, claves, etiqueta=None):
 
     for nivel in NIVELES:
         tabla[f"% {nivel}"] = (
-            tabla[nivel] / tabla["ESTUDIANTES"]
+                tabla[nivel] / tabla["ESTUDIANTES"]
         )
 
     tabla["PUNTAJE_PROMEDIO"] = (
@@ -320,7 +321,7 @@ def tabla_resumen(df, claves, etiqueta=None):
         codigo = c["codigo"]
 
         tabla[f"% PROM. {c['corto']}"] = (
-            agrupador[f"{codigo}_PORCENTAJE"].mean() / 100
+                agrupador[f"{codigo}_PORCENTAJE"].mean() / 100
         )
 
     tabla = tabla.reset_index()
@@ -336,7 +337,6 @@ def tabla_resumen(df, claves, etiqueta=None):
 
 
 def preparar_detalle(df, completo=False):
-
     if completo:
         columnas = list(COLUMNAS_DETALLE_INSTITUCION)
     else:
@@ -383,12 +383,12 @@ def preparar_detalle(df, completo=False):
 # ================================================================
 
 def agregar_grafico(
-    ws_dash,
-    ws_datos,
-    tabla,
-    col_categorias,
-    titulo,
-    ancla
+        ws_dash,
+        ws_datos,
+        tabla,
+        col_categorias,
+        titulo,
+        ancla
 ):
     """Gráfico de barras apiladas al 100 %."""
 
@@ -452,13 +452,13 @@ def agregar_grafico(
 
 
 def construir_dashboard(
-    ws,
-    df,
-    titulo,
-    ws_comp,
-    comp,
-    ws_grupos,
-    grupos
+        ws,
+        df,
+        titulo,
+        ws_comp,
+        comp,
+        ws_grupos,
+        grupos
 ):
     escribir_titulo(
         ws,
@@ -527,24 +527,8 @@ def construir_dashboard(
 
     ws.row_dimensions[5].height = 32
 
-    agregar_grafico(
-        ws,
-        ws_comp,
-        comp,
-        1,
-        "Niveles de logro por competencia",
-        "A8"
-    )
-
-    agregar_grafico(
-        ws,
-        ws_grupos,
-        grupos,
-        1,
-        "Nivel de logro global por grado",
-        "A28"
-    )
-
+    agregar_grafico(        ws,        ws_comp,        comp,        1,        "Niveles de logro por competencia",        "A8"    )
+    agregar_grafico(        ws,        ws_grupos,        grupos,        1,        "Nivel de logro global por grado",        "A28"    )
     ws.sheet_view.showGridLines = False
 
 
@@ -580,32 +564,18 @@ def crear_libro(df, titulo, ruta, hojas_extra, detalle_completo=False):
     for nombre, claves in hojas_extra:
         ws = wb.create_sheet(nombre)
 
-        escribir_tabla(
-            ws,
-            tabla_resumen(df, claves)
-        )
+        escribir_tabla(            ws,            tabla_resumen(df, claves)        )
 
     # Detalle de estudiantes
     ws_detalle = wb.create_sheet("DETALLE_ESTUDIANTES")
-
     escribir_tabla(
         ws_detalle,
         preparar_detalle(df, completo=detalle_completo)
     )
 
     # Dashboard
-    construir_dashboard(
-        ws_dash,
-        df,
-        titulo,
-        ws_comp,
-        comp,
-        ws_grupos,
-        grupos
-    )
-
+    construir_dashboard(        ws_dash,        df,        titulo,        ws_comp,        comp,        ws_grupos,        grupos    )
     wb.save(ruta)
-
 
 # ================================================================
 # 6. REPORTE GENERAL
@@ -649,11 +619,10 @@ def generar_reportes_instituciones(df):
     )
 
     for numero, institucion in enumerate(instituciones, start=1):
-
         grupo = df[
             df["INSTITUCION"].fillna("SIN_DATO").astype(str)
             == institucion
-        ].copy()
+            ].copy()
 
         nombre = (
             f"REPORTE_{limpiar_nombre_archivo(institucion)}"
@@ -684,21 +653,17 @@ def comprimir_reportes():
     ruta_zip = CARPETA_RESULTADOS / NOMBRE_ARCHIVO_ZIP
 
     with zipfile.ZipFile(
-        ruta_zip,
-        "w",
-        zipfile.ZIP_DEFLATED
+            ruta_zip,
+            "w",
+            zipfile.ZIP_DEFLATED
     ) as zf:
-
-        for archivo in sorted(
-            CARPETA_REPORTES_IE.glob("*.xlsx")
-        ):
+        for archivo in sorted(CARPETA_REPORTES_IE.glob("*.xlsx")):
             zf.write(
                 archivo,
                 arcname=archivo.name
             )
 
     print(f"ZIP de instituciones: {ruta_zip}")
-
     return ruta_zip
 
 
@@ -707,16 +672,9 @@ def comprimir_reportes():
 # ================================================================
 
 def generar_todos_los_reportes(df):
-
     if df is None or df.empty:
-        raise ValueError(
-            "No hay datos para generar reportes de CCSS."
-        )
-
-    CARPETA_RESULTADOS.mkdir(
-        parents=True,
-        exist_ok=True
-    )
+        raise ValueError("No hay datos para generar reportes de CCSS.")
+    CARPETA_RESULTADOS.mkdir(parents=True, exist_ok=True)
 
     orden = [
         c for c in [
@@ -730,24 +688,12 @@ def generar_todos_los_reportes(df):
         if c in df.columns
     ]
 
-    df = df.sort_values(
-        orden,
-        kind="stable"
-    ).reset_index(drop=True)
-
+    df = df.sort_values(orden, kind="stable").reset_index(drop=True)
     generar_reporte_general(df)
-
     total = generar_reportes_instituciones(df)
-
     comprimir_reportes()
-
-    print(
-        f"\nReportes institucionales generados: {total}"
-    )
-
-    print(
-        "GENERACIÓN DE REPORTES DE CCSS FINALIZADA."
-    )
+    print(f"\nReportes institucionales generados: {total}")
+    print("GENERACIÓN DE REPORTES DE CCSS FINALIZADA.")
 
 
 # ================================================================
@@ -756,7 +702,4 @@ def generar_todos_los_reportes(df):
 
 if __name__ == "__main__":
     from procesamiento_ccss import procesar_datos
-
-    generar_todos_los_reportes(
-        procesar_datos()
-    )
+    generar_todos_los_reportes(        procesar_datos()    )

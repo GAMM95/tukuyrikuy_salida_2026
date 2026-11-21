@@ -1,35 +1,23 @@
-
-from pathlib import Path
-
 # ============================================================
 # TUKUYRICUY 2026
 # CONFIGURACIÓN DE PERSONAL SOCIAL - PRIMARIA
 # ============================================================
 
+from pathlib import Path
 
 # ============================================================
 # 1. RUTAS DEL PROYECTO
 # ============================================================
-
 CARPETA_PROYECTO = Path(__file__).resolve().parent
-
 CARPETA_RESOURCES = CARPETA_PROYECTO / "resources"
-
 CARPETA_RESULTADOS = CARPETA_PROYECTO / "resultados"
-
-CARPETA_REPORTES_IE = (
-    CARPETA_RESULTADOS / "REPORTES_INSTITUCIONES"
-)
-
+CARPETA_REPORTES_IE = (CARPETA_RESULTADOS / "REPORTES_INSTITUCIONES")
 
 # ============================================================
 # 2. ARCHIVO EXCEL DE ORIGEN
 # ============================================================
 
-ARCHIVO_ORIGEN = (
-    CARPETA_RESOURCES /
-    "RESULTADOS_PERSONAL_SOCIAL_CCSS.xlsx"
-)
+ARCHIVO_ORIGEN = (CARPETA_RESOURCES / "RESULTADOS_PERSONAL_SOCIAL_CCSS.xlsx")
 
 ARCHIVO_ENTRADA = ARCHIVO_ORIGEN
 
@@ -39,39 +27,21 @@ ARCHIVO_ENTRADA = ARCHIVO_ORIGEN
 
 HOJAS_ORIGEN = ["RESULTADOS"]
 
-
 # ============================================================
 # 3. INFORMACIÓN GENERAL
 # ============================================================
 
 AREA = "PERSONAL SOCIAL"
-
 NIVEL_OBJETIVO = "PRIMARIA"
-
 GRADOS_OBJETIVO = [2, 3, 4, 5, 6]
-
-NIVELES = [
-    "INICIO",
-    "PROCESO",
-    "LOGRADO"
-]
-
-NOMBRE_ARCHIVO_GENERAL = (
-    "REPORTE_GENERAL_PERSONAL_SOCIAL_PRIMARIA.xlsx"
-)
-
-NOMBRE_ARCHIVO_PROCESADO = (
-    "BASE_PROCESADA_PERSONAL_SOCIAL_PRIMARIA.xlsx"
-)
-
-NOMBRE_ARCHIVO_ZIP = (
-    "REPORTES_INSTITUCIONES_PERSONAL_SOCIAL_PRIMARIA.zip"
-)
+NIVELES = ["INICIO", "PROCESO", "LOGRADO"]
+NOMBRE_ARCHIVO_GENERAL = ("REPORTE_GENERAL_PERSONAL_SOCIAL_PRIMARIA.xlsx")
+NOMBRE_ARCHIVO_PROCESADO = ("BASE_PROCESADA_PERSONAL_SOCIAL_PRIMARIA.xlsx")
+NOMBRE_ARCHIVO_ZIP = ("REPORTES_INSTITUCIONES_PERSONAL_SOCIAL_PRIMARIA.zip")
 
 TOTAL_PREGUNTAS = 16
 
 TOTAL_COMPETENCIAS = 5
-
 
 # ============================================================
 # 4. COMPETENCIAS Y DISTRIBUCIÓN DE PREGUNTAS
@@ -135,7 +105,6 @@ COMPETENCIAS = [
 
 ]
 
-
 # ============================================================
 # 5. PESOS DE LAS COMPETENCIAS
 # ============================================================
@@ -149,7 +118,6 @@ PESOS_COMPETENCIAS = {
 }
 
 PESO_TOTAL = sum(PESOS_COMPETENCIAS.values())
-
 
 # ============================================================
 # 6. NIVELES DE LOGRO POR COMPETENCIA
@@ -279,7 +247,6 @@ NIVELES_LOGRO = {
 
 }
 
-
 # ============================================================
 # 7. UMBRALES DEL RESULTADO GLOBAL
 # ============================================================
@@ -287,7 +254,6 @@ NIVELES_LOGRO = {
 LIMITE_GLOBAL_INICIO = 50
 
 LIMITE_GLOBAL_PROCESO = 75
-
 
 # ============================================================
 # 8. COLORES DEL PROYECTO
@@ -317,7 +283,6 @@ COLORES = {
 
 }
 
-
 # ============================================================
 # 9. COLUMNAS DE IDENTIFICACIÓN
 # ============================================================
@@ -337,7 +302,6 @@ COLUMNAS_IDENTIFICACION = [
 
 ]
 
-
 # ============================================================
 # 10. COLUMNAS DE RESPUESTAS P1-P16
 # ============================================================
@@ -349,7 +313,6 @@ COLUMNAS_PREGUNTAS = [
 
 ]
 
-
 # ============================================================
 # 11. COLUMNAS DE VALORACIÓN V1-V16
 # ============================================================
@@ -360,7 +323,6 @@ COLUMNAS_VALORACION = [
     for i in range(1, TOTAL_PREGUNTAS + 1)
 
 ]
-
 
 # ============================================================
 # 12. COLUMNAS DE RESULTADOS GENERALES
@@ -375,7 +337,6 @@ COLUMNAS_RESULTADOS = [
 
 ]
 
-
 # ============================================================
 # 13. COLUMNAS DERIVADAS POR COMPETENCIA
 # ============================================================
@@ -383,7 +344,6 @@ COLUMNAS_RESULTADOS = [
 COLUMNAS_COMPETENCIAS = []
 
 for competencia in COMPETENCIAS:
-
     codigo = competencia["codigo"]
 
     COLUMNAS_COMPETENCIAS.extend([
@@ -398,7 +358,6 @@ for competencia in COMPETENCIAS:
         f"{codigo}_PUNTAJE_PONDERADO",
 
     ])
-
 
 # ============================================================
 # 14. COLUMNAS DE RESULTADO GLOBAL
@@ -418,23 +377,23 @@ COLUMNAS_PORCENTAJES = [
 
 # Columnas de DETALLE_ESTUDIANTES en los reportes por institución
 COLUMNAS_DETALLE_INSTITUCION = (
-    COLUMNAS_IDENTIFICACION
-    + ["CORRECTAS", "INCORRECTAS"]
-    + [f"{c['codigo']}_{campo}"
-       for c in COMPETENCIAS
-       for campo in ("ACIERTOS", "PORCENTAJE", "NIVEL")]
-    + COLUMNAS_PREGUNTAS
-    + COLUMNAS_VALORACION
-    + COLUMNAS_PORCENTAJES
-    + ["PUNTAJE_GLOBAL_PONDERADO", "NIVEL_LOGRO_GLOBAL"]
+        COLUMNAS_IDENTIFICACION
+        + ["CORRECTAS", "INCORRECTAS"]
+        + [f"{c['codigo']}_{campo}"
+           for c in COMPETENCIAS
+           for campo in ("ACIERTOS", "PORCENTAJE", "NIVEL")]
+        + COLUMNAS_PREGUNTAS
+        + COLUMNAS_VALORACION
+        + COLUMNAS_PORCENTAJES
+        + ["PUNTAJE_GLOBAL_PONDERADO", "NIVEL_LOGRO_GLOBAL"]
 )
+
 
 # ============================================================
 # 15. CLASIFICAR NIVEL DE UNA COMPETENCIA
 # ============================================================
 
 def clasificar_nivel_competencia(aciertos, competencia):
-
     try:
         valor = float(aciertos)
 
@@ -454,23 +413,23 @@ def clasificar_nivel_competencia(aciertos, competencia):
     limites = NIVELES_LOGRO[codigo]
 
     if (
-        limites["INICIO"]["minimo"]
-        <= valor
-        <= limites["INICIO"]["maximo"]
+            limites["INICIO"]["minimo"]
+            <= valor
+            <= limites["INICIO"]["maximo"]
     ):
         return "INICIO"
 
     if (
-        limites["PROCESO"]["minimo"]
-        <= valor
-        <= limites["PROCESO"]["maximo"]
+            limites["PROCESO"]["minimo"]
+            <= valor
+            <= limites["PROCESO"]["maximo"]
     ):
         return "PROCESO"
 
     if (
-        limites["LOGRADO"]["minimo"]
-        <= valor
-        <= limites["LOGRADO"]["maximo"]
+            limites["LOGRADO"]["minimo"]
+            <= valor
+            <= limites["LOGRADO"]["maximo"]
     ):
         return "LOGRADO"
 
@@ -482,7 +441,6 @@ def clasificar_nivel_competencia(aciertos, competencia):
 # ============================================================
 
 def calcular_puntaje_ponderado(aciertos, competencia):
-
     try:
         valor = float(aciertos)
         peso = float(competencia["peso"])
@@ -528,7 +486,6 @@ def calcular_puntaje_ponderado(aciertos, competencia):
 # ============================================================
 
 def clasificar_nivel_global(puntaje):
-
     try:
         valor = float(puntaje)
 
@@ -553,7 +510,6 @@ def clasificar_nivel_global(puntaje):
 
 
 def validar_configuracion():
-
     if len(COMPETENCIAS) != TOTAL_COMPETENCIAS:
         raise ValueError(
             "Personal Social debe contener cinco competencias."
@@ -565,9 +521,9 @@ def validar_configuracion():
         )
 
     if (
-        LIMITE_GLOBAL_INICIO < 0
-        or LIMITE_GLOBAL_PROCESO > 100
-        or LIMITE_GLOBAL_INICIO >= LIMITE_GLOBAL_PROCESO
+            LIMITE_GLOBAL_INICIO < 0
+            or LIMITE_GLOBAL_PROCESO > 100
+            or LIMITE_GLOBAL_INICIO >= LIMITE_GLOBAL_PROCESO
     ):
         raise ValueError(
             "Los umbrales globales no son válidos."
@@ -623,12 +579,12 @@ def validar_configuracion():
         limites = NIVELES_LOGRO[codigo]
 
         if (
-            limites["INICIO"]["minimo"] != 0
-            or limites["INICIO"]["maximo"] + 1
-            != limites["PROCESO"]["minimo"]
-            or limites["PROCESO"]["maximo"] + 1
-            != limites["LOGRADO"]["minimo"]
-            or limites["LOGRADO"]["maximo"] != total
+                limites["INICIO"]["minimo"] != 0
+                or limites["INICIO"]["maximo"] + 1
+                != limites["PROCESO"]["minimo"]
+                or limites["PROCESO"]["maximo"] + 1
+                != limites["LOGRADO"]["minimo"]
+                or limites["LOGRADO"]["maximo"] != total
         ):
             raise ValueError(
                 "Los niveles de logro tienen una distribución "
@@ -643,7 +599,7 @@ def validar_configuracion():
 
     # Validar que las preguntas cubran P1 hasta P16
     if sorted(preguntas) != list(
-        range(1, TOTAL_PREGUNTAS + 1)
+            range(1, TOTAL_PREGUNTAS + 1)
     ):
         raise ValueError(
             "La distribución debe cubrir P1 a P16 "
@@ -676,7 +632,6 @@ def validar_configuracion():
 # ============================================================
 
 def crear_carpetas():
-
     CARPETA_RESOURCES.mkdir(
         parents=True,
         exist_ok=True
@@ -718,7 +673,6 @@ if __name__ == "__main__":
     print("\nDISTRIBUCIÓN DE COMPETENCIAS:")
 
     for competencia in COMPETENCIAS:
-
         print(
             f"{competencia['codigo']} | "
             f"{competencia['nombre']} | "

@@ -1,4 +1,3 @@
-
 # ================================================================
 # TUKUYRICUY 2026
 # PROCESAMIENTO DE RESULTADOS - CIENCIAS SOCIALES (SECUNDARIA)
@@ -82,16 +81,10 @@ def agregar_nivel(df, nombre_hoja):
 # ================================================================
 # 3. VALIDAR COLUMNAS V1-V16
 # ================================================================
-
 def validar_columnas_valoracion(df, nombre_hoja):
-
     requeridas = ["NIVEL", "GRADO"] + COLUMNAS_VALORACION
 
-    faltantes = [
-        c for c in requeridas
-        if c not in df.columns
-    ]
-
+    faltantes = [c for c in requeridas if c not in df.columns]
     if faltantes:
         raise ValueError(
             f"La hoja '{nombre_hoja}' no contiene las columnas "
@@ -153,14 +146,13 @@ def limpiar_identificacion(df):
 
 
 def eliminar_columnas_calculadas(df):
-
     a_eliminar = [
         c for c in df.columns
         if c.startswith("COMP_")
-        or c.startswith("PORCENTAJE_")
-        or c in COLUMNAS_RESULTADOS
-        or c in COLUMNAS_RESULTADO_GLOBAL
-        or c == "PUNTAJE_GLOBAL"
+           or c.startswith("PORCENTAJE_")
+           or c in COLUMNAS_RESULTADOS
+           or c in COLUMNAS_RESULTADO_GLOBAL
+           or c == "PUNTAJE_GLOBAL"
     ]
 
     return df.drop(columns=a_eliminar, errors="ignore")
@@ -174,7 +166,6 @@ def calcular_resultados(df):
     df = df.copy()
 
     # --- Valoraciones: solo 0 o 1 ---
-
     valores = df[COLUMNAS_VALORACION].apply(
         pd.to_numeric,
         errors="coerce"
@@ -189,22 +180,15 @@ def calcular_resultados(df):
             "de 0/1 se contaron como incorrectas."
         )
 
-    df[COLUMNAS_VALORACION] = (
-        valores.where(validos, 0).astype(int)
-    )
+    df[COLUMNAS_VALORACION] = (valores.where(validos, 0).astype(int))
 
     # --- Resultado general ---
 
     df["CORRECTAS"] = df[COLUMNAS_VALORACION].sum(axis=1)
-
     df["TOTAL_PREGUNTAS"] = TOTAL_PREGUNTAS
-
-    df["INCORRECTAS"] = (
-        TOTAL_PREGUNTAS - df["CORRECTAS"]
-    )
-
+    df["INCORRECTAS"] = (TOTAL_PREGUNTAS - df["CORRECTAS"])
     df["PORCENTAJE"] = (
-        df["CORRECTAS"] / TOTAL_PREGUNTAS * 100
+            df["CORRECTAS"] / TOTAL_PREGUNTAS * 100
     ).round(2)
 
     # --- Por competencia ---
@@ -212,37 +196,22 @@ def calcular_resultados(df):
     columnas_ponderadas = []
 
     for c in COMPETENCIAS:
-
         pref = c["codigo"]
 
-        columnas = [
-            f"V{p}" for p in c["preguntas"]
-        ]
-
+        columnas = [f"V{p}" for p in c["preguntas"]]
         total = len(columnas)
-
         aciertos = df[columnas].sum(axis=1)
-
         peso = c["peso"]
-
         df[f"{pref}_NOMBRE"] = c["nombre"]
-
-        df[f"{pref}_PREGUNTAS"] = ", ".join(
-            f"P{p}" for p in c["preguntas"]
-        )
-
+        df[f"{pref}_PREGUNTAS"] = ", ".join(f"P{p}" for p in c["preguntas"])
         df[f"{pref}_ACIERTOS"] = aciertos
-
         df[f"{pref}_TOTAL"] = total
-
-        df[f"{pref}_PORCENTAJE"] = (
-            aciertos / total * 100
-        ).round(2)
+        df[f"{pref}_PORCENTAJE"] = (aciertos / total * 100).round(2)
 
         # Cada competencia utiliza sus propios límites.
         df[f"{pref}_NIVEL"] = aciertos.map(
             lambda a, comp=c:
-                clasificar_nivel_competencia(a, comp)
+            clasificar_nivel_competencia(a, comp)
         )
 
         df[f"{pref}_PESO"] = peso
@@ -250,7 +219,7 @@ def calcular_resultados(df):
         # Puntaje ponderado sobre 100.
         df[f"{pref}_PUNTAJE_PONDERADO"] = aciertos.map(
             lambda a, comp=c:
-                calcular_puntaje_ponderado(a, comp)
+            calcular_puntaje_ponderado(a, comp)
         )
 
         columnas_ponderadas.append(
@@ -275,6 +244,7 @@ def calcular_resultados(df):
     )
 
     return df
+
 
 # ================================================================
 # PORCENTAJES DE CONTROL
@@ -310,72 +280,49 @@ def agregar_porcentajes(df, porcentaje_origen=None):
 
     return df
 
+
 # ================================================================
 # 7. ORDENAR COLUMNAS
 # ================================================================
 
 def ordenar_columnas(df):
-
     orden = (
-        COLUMNAS_IDENTIFICACION
-        + COLUMNAS_PREGUNTAS
-        + COLUMNAS_VALORACION
-        + COLUMNAS_RESULTADOS
-        + COLUMNAS_COMPETENCIAS
-        + COLUMNAS_RESULTADO_GLOBAL
-        + COLUMNAS_PORCENTAJES
+            COLUMNAS_IDENTIFICACION
+            + COLUMNAS_PREGUNTAS
+            + COLUMNAS_VALORACION
+            + COLUMNAS_RESULTADOS
+            + COLUMNAS_COMPETENCIAS
+            + COLUMNAS_RESULTADO_GLOBAL
+            + COLUMNAS_PORCENTAJES
     )
 
-    principales = [
-        c for c in orden
-        if c in df.columns
-    ]
-
-    otras = [
-        c for c in df.columns
-        if c not in orden
-    ]
+    principales = [c for c in orden if c in df.columns]
+    otras = [c for c in df.columns if c not in orden]
 
     return df[principales + otras]
+
 
 # ================================================================
 # 8. PROCESAR UNA HOJA
 # ================================================================
-
 def procesar_hoja(nombre_hoja):
-
     print(f"Procesando hoja: {nombre_hoja}")
-
-    df = pd.read_excel(
-        ARCHIVO_ORIGEN,
-        sheet_name=nombre_hoja,
-        dtype=object
-    )
-
+    df = pd.read_excel(ARCHIVO_ORIGEN, sheet_name=nombre_hoja, dtype=object)
     df = normalizar_columnas(df)
-
     df = df.dropna(how="all")
-
     df = agregar_nivel(df, nombre_hoja)
-
     validar_columnas_valoracion(df, nombre_hoja)
 
     # --- Filtrar secundaria ---
 
     df = df[
         df["NIVEL"] == NIVEL_OBJETIVO
-    ].copy()
+        ].copy()
 
     # --- Limpiar identificación ---
-
     df = limpiar_identificacion(df)
-
     # --- Filtrar grados 1 a 5 ---
-
-    df = df[
-        df["GRADO"].isin(GRADOS_OBJETIVO)
-    ].copy()
-
+    df = df[df["GRADO"].isin(GRADOS_OBJETIVO)].copy()
     if df.empty:
         raise ValueError(
             "No hay registros de SECUNDARIA "
@@ -383,16 +330,11 @@ def procesar_hoja(nombre_hoja):
         )
 
     # --- Recalcular resultados ---
-
     # Se guarda el porcentaje del origen antes de recalcular todo
-    porcentaje_origen = (
-        df["PORCENTAJE"].copy() if "PORCENTAJE" in df.columns else None
-    )
+    porcentaje_origen = (df["PORCENTAJE"].copy() if "PORCENTAJE" in df.columns else None)
 
     df = eliminar_columnas_calculadas(df)
-
     df = calcular_resultados(df)
-
     df = agregar_porcentajes(df, porcentaje_origen)
 
     return ordenar_columnas(df)
@@ -401,9 +343,7 @@ def procesar_hoja(nombre_hoja):
 # ================================================================
 # 9. PROCESAR TODAS LAS HOJAS
 # ================================================================
-
 def procesar_datos():
-
     crear_carpetas()
 
     validar_configuracion()
@@ -416,25 +356,18 @@ def procesar_datos():
     # --- Identificar hoja de origen ---
 
     libro = pd.ExcelFile(ARCHIVO_ORIGEN)
-
     hoja_preferida = HOJAS_ORIGEN[0]
-
     if hoja_preferida in libro.sheet_names:
         hoja_seleccionada = hoja_preferida
     else:
         hoja_seleccionada = libro.sheet_names[0]
-
         print(
             f"AVISO: No existe la hoja '{hoja_preferida}'. "
             f"Se utilizará '{hoja_seleccionada}'."
         )
 
     # --- Procesar hoja seleccionada ---
-
-    resultados = [
-        procesar_hoja(hoja_seleccionada)
-    ]
-
+    resultados = [procesar_hoja(hoja_seleccionada)]
     df_final = pd.concat(
         resultados,
         ignore_index=True,
@@ -444,11 +377,7 @@ def procesar_datos():
     # --- Verificar registros repetidos ---
 
     if "ID_REGISTRO" in df_final.columns:
-
-        repetidos = int(
-            df_final["ID_REGISTRO"].duplicated().sum()
-        )
-
+        repetidos = int(df_final["ID_REGISTRO"].duplicated().sum())
         if repetidos:
             print(
                 f"AVISO: {repetidos} registros "
@@ -457,13 +386,10 @@ def procesar_datos():
 
     # --- Guardar archivo procesado ---
 
-    archivo_salida = (
-        CARPETA_RESULTADOS / NOMBRE_ARCHIVO_PROCESADO
-    )
-
+    archivo_salida = (CARPETA_RESULTADOS / NOMBRE_ARCHIVO_PROCESADO)
     with pd.ExcelWriter(
-        archivo_salida,
-        engine="openpyxl"
+            archivo_salida,
+            engine="openpyxl"
     ) as writer:
 
         df_final.to_excel(
